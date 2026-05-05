@@ -1,11 +1,5 @@
-const apiBaseUrl = (import.meta.env.PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
-
 function buildApiUrl(path: string): string {
-  if (!apiBaseUrl) {
-    throw new Error("PUBLIC_API_BASE_URL が未設定です。");
-  }
-
-  return `${apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+  return path.startsWith("/") ? path : `/${path}`;
 }
 
 function unwrapList<T>(payload: unknown): T[] {
