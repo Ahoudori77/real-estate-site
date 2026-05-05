@@ -1,0 +1,259 @@
+---
+import SectionTitle from "../common/SectionTitle.astro";
+
+const kyotoAreas = [
+  { name: "京丹後市", href: "/properties?prefecture=京都府&city=京丹後市" },
+  { name: "伊根町", href: "/properties?prefecture=京都府&city=伊根町" },
+  { name: "与謝野町", href: "/properties?prefecture=京都府&city=与謝野町" },
+  { name: "宮津市", href: "/properties?prefecture=京都府&city=宮津市" },
+  { name: "舞鶴市", href: "/properties?prefecture=京都府&city=舞鶴市" },
+  { name: "綾部市", href: "/properties?prefecture=京都府&city=綾部市" },
+  { name: "福知山市", href: "/properties?prefecture=京都府&city=福知山市" },
+];
+
+const hyogoAreas = [
+  { name: "丹波市", href: "/properties?prefecture=兵庫県&city=丹波市" },
+  { name: "朝来市", href: "/properties?prefecture=兵庫県&city=朝来市" },
+  { name: "養父市", href: "/properties?prefecture=兵庫県&city=養父市" },
+  { name: "豊岡市", href: "/properties?prefecture=兵庫県&city=豊岡市" },
+];
+
+const conditionLinks = [
+  { name: "土地", href: "/properties?type=land" },
+  { name: "戸建て", href: "/properties?type=house" },
+  { name: "3,000万円以下", href: "/properties?priceMax=30000000" },
+  { name: "2,000万円以下", href: "/properties?priceMax=20000000" },
+  { name: "土地面積100㎡以上", href: "/properties?landAreaMin=100" },
+  { name: "建物面積80㎡以上", href: "/properties?buildingAreaMin=80" },
+];
+---
+
+<section class="quick-search-section section section--plain">
+  <div class="container">
+    <SectionTitle
+      title="探し方から選ぶ"
+      lead="エリアや種別から、ご希望に合う物件をお探しいただけます。"
+    />
+
+    <div class="quick-search-grid">
+      <article class="quick-search-card quick-search-card--wide">
+        <div class="quick-search-card__header">
+          <p class="quick-search-eyebrow">AREA SEARCH</p>
+          <h3>エリアで探す</h3>
+          <p>
+            京都北部を中心に、丹波・但馬周辺の土地・戸建てを探せます。
+          </p>
+        </div>
+
+        <div class="area-groups">
+          <div class="area-group">
+            <h4>京都府北部</h4>
+            <div class="quick-search-tags">
+              {kyotoAreas.map((area) => (
+                <a href={area.href}>{area.name}</a>
+              ))}
+            </div>
+          </div>
+
+          <div class="area-group">
+            <h4>兵庫県周辺</h4>
+            <div class="quick-search-tags">
+              {hyogoAreas.map((area) => (
+                <a href={area.href}>{area.name}</a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="quick-search-card">
+        <div class="quick-search-card__header">
+          <p class="quick-search-eyebrow">CONDITION</p>
+          <h3>条件で探す</h3>
+          <p>
+            土地・戸建ての種別や価格帯から、希望に近い物件へ絞り込めます。
+          </p>
+        </div>
+
+        <div class="quick-search-tags">
+          {conditionLinks.map((condition) => (
+            <a href={condition.href}>{condition.name}</a>
+          ))}
+        </div>
+
+        <div class="quick-search-note">
+          <p>
+            細かな条件で探したい場合は、検索ページから面積や特徴も指定できます。
+          </p>
+          <a href="/search">詳しく検索する</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<style>
+  .quick-search-grid {
+    display: grid;
+    gap: 24px;
+    align-items: stretch;
+  }
+
+  .quick-search-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.92);
+    padding: 28px;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .quick-search-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background: linear-gradient(
+      90deg,
+      var(--color-accent) 0%,
+      #f08a72 100%
+    );
+  }
+
+  .quick-search-card__header {
+    margin-bottom: 22px;
+  }
+
+  .quick-search-eyebrow {
+    margin: 0 0 8px;
+    color: var(--color-accent);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+  }
+
+  .quick-search-card h3 {
+    margin: 0 0 10px;
+    color: var(--color-text);
+    font-size: 24px;
+    line-height: 1.4;
+    font-weight: 900;
+  }
+
+  .quick-search-card p {
+    margin: 0;
+    color: var(--color-muted);
+    line-height: 1.8;
+  }
+
+  .area-groups {
+    display: grid;
+    gap: 20px;
+  }
+
+  .area-group {
+    border-radius: 18px;
+    background: var(--color-accent-pale, #fff7f3);
+    padding: 18px;
+  }
+
+  .area-group h4 {
+    margin: 0 0 12px;
+    color: var(--color-primary);
+    font-size: 16px;
+    font-weight: 900;
+  }
+
+  .quick-search-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .quick-search-tags a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-primary);
+    padding: 0 15px;
+    font-size: 14px;
+    font-weight: 800;
+    text-decoration: none;
+    transition:
+      background 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease,
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .quick-search-tags a:hover {
+    border-color: var(--color-accent);
+    background: var(--color-accent-soft);
+    color: var(--color-accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(233, 71, 46, 0.12);
+  }
+
+  .quick-search-note {
+    margin-top: 24px;
+    border-top: 1px solid var(--color-border);
+    padding-top: 18px;
+  }
+
+  .quick-search-note p {
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+
+  .quick-search-note a {
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-accent-dark);
+    font-weight: 900;
+    text-decoration: none;
+  }
+
+  .quick-search-note a::after {
+    content: "→";
+    margin-left: 6px;
+    transition: transform 0.2s ease;
+  }
+
+  .quick-search-note a:hover::after {
+    transform: translateX(3px);
+  }
+
+  @media (min-width: 960px) {
+    .quick-search-grid {
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .quick-search-card {
+      padding: 22px;
+      border-radius: 20px;
+    }
+
+    .quick-search-card h3 {
+      font-size: 22px;
+    }
+
+    .area-group {
+      padding: 16px;
+    }
+
+    .quick-search-tags a {
+      min-height: 36px;
+      padding: 0 13px;
+      font-size: 13px;
+    }
+  }
+</style>

@@ -1,0 +1,404 @@
+---
+import SectionTitle from "../common/SectionTitle.astro";
+import { coverageAreas } from "../../data/coverageAreas";
+
+const kyotoAreas = coverageAreas.kyoto.areas;
+const hyogoAreas = coverageAreas.hyogo.areas;
+---
+
+<section class="area-coverage-section">
+  <div class="container">
+    <SectionTitle
+      title="対応エリア"
+      lead="京都北部を中心に、丹波・但馬周辺の土地・戸建て売買に対応しています。"
+    />
+
+    <div class="area-coverage-card">
+      <div class="area-map-panel" aria-label="京都北部・周辺エリアの簡略マップ">
+        <div class="map-label">
+          <span>KYOTO NORTH AREA</span>
+          <strong>京都北部・周辺エリア</strong>
+        </div>
+
+        <svg
+          class="coverage-map"
+          viewBox="0 0 640 520"
+          role="img"
+          aria-labelledby="coverage-map-title coverage-map-desc"
+        >
+          <title id="coverage-map-title">京都北部・兵庫県周辺の対応エリア簡略図</title>
+          <desc id="coverage-map-desc">
+            京丹後市、伊根町、与謝野町、宮津市、舞鶴市、綾部市、福知山市、丹波市、朝来市、養父市、豊岡市を鳥居朱で示した簡略マップです。
+          </desc>
+
+          <rect x="0" y="0" width="640" height="520" rx="28" class="map-bg" />
+
+          <path
+            d="M70 90 C130 42 245 44 310 82 C368 116 400 96 468 132 C548 174 574 250 548 328 C518 420 414 470 298 452 C182 434 94 362 62 266 C38 194 28 132 70 90Z"
+            class="map-region-base"
+          />
+
+          <path
+            d="M92 116 C136 70 218 64 276 92 L252 168 L156 176 L92 116Z"
+            class="map-area map-area--primary"
+          />
+          <text x="165" y="128" class="map-text">京丹後市</text>
+
+          <path
+            d="M276 92 C330 110 354 138 364 178 L284 190 L252 168Z"
+            class="map-area map-area--primary"
+          />
+          <text x="296" y="150" class="map-text">伊根町</text>
+
+          <path
+            d="M156 176 L252 168 L284 190 L260 248 L170 250 Z"
+            class="map-area map-area--primary"
+          />
+          <text x="191" y="218" class="map-text">与謝野町</text>
+
+          <path
+            d="M284 190 L364 178 L410 226 L356 282 L260 248Z"
+            class="map-area map-area--primary"
+          />
+          <text x="323" y="238" class="map-text">宮津市</text>
+
+          <path
+            d="M364 178 C438 178 504 214 524 282 L456 326 L410 226Z"
+            class="map-area map-area--primary"
+          />
+          <text x="435" y="255" class="map-text">舞鶴市</text>
+
+          <path
+            d="M356 282 L456 326 L438 398 L330 388 L300 322Z"
+            class="map-area map-area--primary"
+          />
+          <text x="371" y="352" class="map-text">綾部市</text>
+
+          <path
+            d="M170 250 L260 248 L300 322 L330 388 L228 404 L136 342Z"
+            class="map-area map-area--primary"
+          />
+          <text x="216" y="334" class="map-text">福知山市</text>
+
+          <path
+            d="M136 342 L228 404 L204 462 C136 444 82 390 58 326Z"
+            class="map-area map-area--secondary"
+          />
+          <text x="120" y="392" class="map-text">丹波市</text>
+
+          <path
+            d="M228 404 L330 388 L348 462 C302 476 250 474 204 462Z"
+            class="map-area map-area--secondary"
+          />
+          <text x="260" y="436" class="map-text">朝来市</text>
+
+          <path
+            d="M330 388 L438 398 L420 456 C400 466 374 472 348 462Z"
+            class="map-area map-area--secondary"
+          />
+          <text x="366" y="426" class="map-text">養父市</text>
+
+          <path
+            d="M456 326 L524 282 C548 346 510 420 420 456 L438 398Z"
+            class="map-area map-area--secondary"
+          />
+          <text x="462" y="378" class="map-text">豊岡市</text>
+
+          <path d="M72 86 C138 38 250 36 318 76" class="map-coast" />
+          <text x="78" y="68" class="map-note">日本海側</text>
+
+          <circle cx="520" cy="106" r="8" class="map-dot" />
+          <text x="536" y="112" class="map-legend-text">対応エリア</text>
+        </svg>
+
+        <p class="map-caption">
+          ※市町の位置関係を伝えるための簡略図です。実際の行政区域とは形状が異なります。
+        </p>
+      </div>
+
+      <div class="area-info-panel">
+        <div class="area-info-block">
+          <p class="area-info-eyebrow">MAIN AREA</p>
+          <h3>{coverageAreas.kyoto.title}</h3>
+          <p>{coverageAreas.kyoto.description}</p>
+
+          <div class="area-tags">
+            {kyotoAreas.map((area) => (
+              <span>{area}</span>
+            ))}
+          </div>
+        </div>
+
+        <div class="area-info-block">
+          <p class="area-info-eyebrow">NEIGHBORING AREA</p>
+          <h3>{coverageAreas.hyogo.title}</h3>
+          <p>{coverageAreas.hyogo.description}</p>
+
+          <div class="area-tags">
+            {hyogoAreas.map((area) => (
+              <span>{area}</span>
+            ))}
+          </div>
+        </div>
+
+        <div class="area-message">
+          <h3>代表が直接ご相談をお伺いします</h3>
+          <p>
+            土地探し、戸建て購入、相続不動産、空き家・古民家など、地域の事情に合わせたご相談も承ります。
+            掲載エリア外でも近隣地域の場合はお気軽にお問い合わせください。
+          </p>
+          <a href="/contact" class="area-contact-link">相談してみる</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .area-coverage-section {
+    padding: 72px 0;
+    background:
+      radial-gradient(circle at top right, rgba(233, 71, 46, 0.08), transparent 30%),
+      linear-gradient(180deg, #fffaf4 0%, #f5efe8 100%);
+  }
+
+  .area-coverage-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+    gap: 28px;
+    align-items: stretch;
+  }
+
+  .area-map-panel,
+  .area-info-panel {
+    border: 1px solid var(--color-border, #eadbd2);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 16px 40px rgba(47, 39, 36, 0.08);
+  }
+
+  .area-map-panel {
+    padding: 24px;
+  }
+
+  .map-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+
+  .map-label span {
+    color: var(--color-accent, #e9472e);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+  }
+
+  .map-label strong {
+    color: var(--color-primary, #241f1c);
+    font-size: 18px;
+  }
+
+  .coverage-map {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 20px;
+  }
+
+  .map-bg {
+    fill: #fffaf4;
+  }
+
+  .map-region-base {
+    fill: #efe5dc;
+    stroke: #d8c7bc;
+    stroke-width: 3;
+  }
+
+  .map-area {
+    stroke: #fffaf4;
+    stroke-width: 4;
+    transition:
+      fill 0.2s ease,
+      transform 0.2s ease,
+      filter 0.2s ease;
+    transform-origin: center;
+  }
+
+  .map-area--primary {
+    fill: var(--color-accent, #e9472e);
+  }
+
+  .map-area--secondary {
+    fill: #f0765e;
+  }
+
+  .map-area:hover {
+    fill: var(--color-accent-dark, #c93622);
+    filter: drop-shadow(0 8px 12px rgba(201, 54, 34, 0.28));
+  }
+
+  .map-text {
+    fill: #fff;
+    font-size: 17px;
+    font-weight: 800;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+  }
+
+  .map-coast {
+    fill: none;
+    stroke: #86b7c8;
+    stroke-width: 5;
+    stroke-linecap: round;
+    opacity: 0.8;
+  }
+
+  .map-note {
+    fill: #5f8190;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .map-dot {
+    fill: var(--color-accent, #e9472e);
+  }
+
+  .map-legend-text {
+    fill: var(--color-muted, #6f625c);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .map-caption {
+    margin: 14px 0 0;
+    color: var(--color-muted, #6f625c);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .area-info-panel {
+    display: grid;
+    gap: 18px;
+    padding: 24px;
+  }
+
+  .area-info-block,
+  .area-message {
+    border: 1px solid var(--color-border, #eadbd2);
+    border-radius: 18px;
+    background: #fff;
+    padding: 20px;
+  }
+
+  .area-info-eyebrow {
+    margin: 0 0 8px;
+    color: var(--color-accent, #e9472e);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+  }
+
+  .area-info-block h3,
+  .area-message h3 {
+    margin: 0 0 10px;
+    color: var(--color-primary, #241f1c);
+    font-size: 22px;
+    line-height: 1.4;
+  }
+
+  .area-info-block p,
+  .area-message p {
+    margin: 0;
+    color: var(--color-muted, #6f625c);
+    line-height: 1.8;
+  }
+
+  .area-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .area-tags span {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--color-border, #eadbd2);
+    border-radius: 999px;
+    background: var(--color-accent-soft, #fff1ed);
+    color: var(--color-accent-dark, #c93622);
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .area-message {
+    background:
+      radial-gradient(circle at top right, rgba(233, 71, 46, 0.1), transparent 34%),
+      #fffaf4;
+  }
+
+  .area-contact-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin-top: 16px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: var(--color-accent, #e9472e);
+    color: #fff;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 10px 20px rgba(233, 71, 46, 0.18);
+    transition:
+      background 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .area-contact-link:hover {
+    background: var(--color-accent-dark, #c93622);
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 960px) {
+    .area-coverage-card {
+      grid-template-columns: 1fr;
+    }
+
+    .area-map-panel,
+    .area-info-panel {
+      border-radius: 20px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .area-coverage-section {
+      padding: 56px 0;
+    }
+
+    .area-map-panel,
+    .area-info-panel {
+      padding: 18px;
+    }
+
+    .map-label {
+      display: grid;
+      align-items: start;
+    }
+
+    .map-text {
+      font-size: 14px;
+    }
+
+    .area-info-block h3,
+    .area-message h3 {
+      font-size: 20px;
+    }
+  }
+</style>

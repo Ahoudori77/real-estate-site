@@ -1,0 +1,643 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+
+const slug = Astro.params.slug ?? "";
+---
+
+<AdminLayout
+  title="物件編集"
+  description="物件情報の確認と編集を行う"
+  currentSection="properties"
+>
+  <section class="admin-section">
+    <div class="admin-section__panel">
+      <div id="admin-property-edit-root" data-slug={slug}>
+        <p class="admin-loading">物件詳細を読み込み中...</p>
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  import { fetchDetail, escapeHtml, formatDateTime } from "../../../lib/admin/client";
+  import { updateProperty } from "../../../lib/admin/properties";
+
+  const root = document.getElementById("admin-property-edit-root");
+  const slug = root?.dataset.slug ?? "";
+
+  const renderError = (message) => {
+    if (!root) return;
+    root.innerHTML = `<p class="admin-error">${escapeHtml(message)}</p>`;
+  };
+
+  const inputValue = (value) => escapeHtml(value ?? "");
+  const numberValue = (value) =>
+    value === null || value === undefined || Number.isNaN(Number(value)) ? "" : String(value);
+
+  const toNullableNumber = (value) => {
+    if (value === "" || value === null || value === undefined) return null;
+    const num = Number(value);
+    return Number.isNaN(num) ? null : num;
+  };
+
+  const buildAdminApiUrl = (path) => {
+    const baseUrl = import.meta.env.PUBLIC_API_BASE_URL ?? "";
+    return `${baseUrl}${path}`;
+  };
+
+  const requestJson = async (path, options = {}) => {
+    const response = await fetch(buildAdminApiUrl(path), {
+      ...options,
+      headers: {
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...(options.headers ?? {}),
+      },
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(data?.message ?? "APIリクエストに失敗しました。");
+    }
+
+    return data;
+  };
+
+  const normalizeImages = (data) => {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.items)) return data.items;
+    return [];
+  };
+
+  const renderImageCardsHtml = (images = []) => {
+    const sortedImages = [...images].sort((a, b) => {
+      const sortA = Number(a.sortOrder ?? 0);
+      const sortB = Number(b.sortOrder ?? 0);
+
+      if (sortA !== sortB) return sortA - sortB;
+
+      return Number(a.id ?? 0) - Number(b.id ?? 0);
+    });
+
+    if (sortedImages.length === 0) {
+      return '<p class="admin-empty">画像は未登録です。</p>';
+    }
+
+    return `
+      <div class="admin-image-list">
+        ${sortedImages
+          .map(
+            (image, index) => `
+              <div class="admin-image-card" data-admin-image-item data-image-id="${escapeHtml(String(image.id))}">
+                <img
+                  src="${escapeHtml(image.imageUrl)}"
+                  alt="${escapeHtml(image.altText ?? "")}"
+                />
+
+                <div class="admin-image-card__meta">
+                  ${
+                    index === 0
+                      ? '<div class="admin-success-text">サムネイル</div>'
+                      : ""
+                  }
+
+                  <div class="admin-form-field" style="margin-top: 12px;">
+                    <label>画像URL</label>
+                    <input
+                      type="url"
+                      data-admin-image-url
+                      value="${inputValue(image.imageUrl)}"
+                    />
+                  </div>
+
+                  <div class="admin-form-field" style="margin-top: 12px;">
+                    <label>altテキスト</label>
+                    <input
+                      type="text"
+                      data-admin-image-alt
+                      value="${inputValue(image.altText)}"
+                    />
+                  </div>
+
+                  <div class="admin-form-field" style="margin-top: 12px;">
+                    <label>表示順</label>
+                    <input
+                      type="number"
+                      data-admin-image-sort
+                      value="${numberValue(image.sortOrder)}"
+                    />
+                  </div>
+
+                  <div class="admin-form__actions" style="margin-top: 12px;">
+                    <button type="button" class="admin-button" data-admin-image-save-button>
+                      画像情報を保存
+                    </button>
+                    <button type="button" class="admin-button admin-button--danger" data-admin-image-delete-button>
+                      削除
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `,
+          )
+          .join("")}
+      </div>
+    `;
+  };
+
+  const bindForm = () => {
+    if (!root) return;
+
+    const form = root.querySelector('[data-admin-property-form]');
+    const messageBox = root.querySelector('[data-admin-form-message]');
+    const saveButton = root.querySelector('[data-admin-save-button]');
+
+    if (!(form instanceof HTMLFormElement)) return;
+    if (!(messageBox instanceof HTMLParagraphElement)) return;
+    if (!(saveButton instanceof HTMLButtonElement)) return;
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      console.log("[admin property] submit fired");
+
+      messageBox.textContent = "";
+      messageBox.className = "admin-card__text";
+
+      saveButton.disabled = true;
+      saveButton.textContent = "保存中...";
+
+      const formData = new FormData(form);
+
+      const featureIds = Array.from(
+        form.querySelectorAll('input[name="featureIds"]:checked')
+      ).map((input) => input.value);
+
+      const payload = {
+        title: String(formData.get("title") ?? ""),
+        propertyType: String(formData.get("propertyType") ?? "house"),
+        transactionType: String(formData.get("transactionType") ?? "sale"),
+        prefecture: String(formData.get("prefecture") ?? ""),
+        city: String(formData.get("city") ?? ""),
+        address: String(formData.get("address") ?? ""),
+        price: Number(formData.get("price") ?? 0),
+        landAreaSqm: toNullableNumber(formData.get("landAreaSqm")),
+        buildingAreaSqm: toNullableNumber(formData.get("buildingAreaSqm")),
+        layout: String(formData.get("layout") ?? "").trim() || null,
+        description: String(formData.get("description") ?? ""),
+        accessInfo: String(formData.get("accessInfo") ?? "").trim() || null,
+        builtYear: toNullableNumber(formData.get("builtYear")),
+        builtMonth: toNullableNumber(formData.get("builtMonth")),
+        status: String(formData.get("status") ?? "draft"),
+        featureIds,
+      };
+
+      console.log("[admin property] payload", payload);
+
+      try {
+        const result = await updateProperty(slug, payload);
+        console.log("[admin property] update success", result);
+
+        await load("保存しました。");
+      } catch (error) {
+        console.error("[admin property] update failed", error);
+
+        messageBox.textContent =
+          error instanceof Error ? error.message : "物件の更新に失敗しました。";
+        messageBox.className = "admin-error";
+
+        saveButton.disabled = false;
+        saveButton.textContent = "保存する";
+      }
+    });
+  };
+
+  const setImageMessage = (message, type = "info") => {
+    if (!root) return;
+
+    const messageBox = root.querySelector("[data-admin-image-message]");
+
+    if (!(messageBox instanceof HTMLParagraphElement)) return;
+
+    messageBox.textContent = message;
+
+    if (type === "success") {
+      messageBox.className = "admin-success-text";
+      return;
+    }
+
+    if (type === "error") {
+      messageBox.className = "admin-error";
+      return;
+    }
+
+    messageBox.className = "admin-card__text";
+  };
+
+  const loadPropertyImages = async () => {
+    if (!root || !slug) return;
+
+    const list = root.querySelector("[data-admin-image-list]");
+
+    if (!(list instanceof HTMLElement)) return;
+
+    try {
+      const data = await requestJson(
+        `/api/admin/properties/${encodeURIComponent(slug)}/images`,
+      );
+
+      const images = normalizeImages(data);
+      list.innerHTML = renderImageCardsHtml(images);
+    } catch (error) {
+      console.error("[admin property images] load failed", error);
+      list.innerHTML = '<p class="admin-empty">画像一覧の取得に失敗しました。</p>';
+      setImageMessage(
+        error instanceof Error ? error.message : "画像一覧の取得に失敗しました。",
+        "error",
+      );
+    }
+  };
+
+  const bindImageManager = () => {
+    if (!root) return;
+
+    const manager = root.querySelector("[data-admin-image-manager]");
+    const addButton = root.querySelector("[data-admin-image-add-button]");
+    const imageList = root.querySelector("[data-admin-image-list]");
+
+    if (!(manager instanceof HTMLElement)) return;
+    if (!(addButton instanceof HTMLButtonElement)) return;
+    if (!(imageList instanceof HTMLElement)) return;
+
+    manager.querySelectorAll("input").forEach((input) => {
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+        }
+      });
+    });
+
+    addButton.addEventListener("click", async () => {
+      const imageUrlInput = root.querySelector("[data-admin-image-new-url]");
+      const altTextInput = root.querySelector("[data-admin-image-new-alt]");
+      const sortOrderInput = root.querySelector("[data-admin-image-new-sort]");
+
+      if (!(imageUrlInput instanceof HTMLInputElement)) return;
+      if (!(altTextInput instanceof HTMLInputElement)) return;
+      if (!(sortOrderInput instanceof HTMLInputElement)) return;
+
+      const imageUrl = imageUrlInput.value.trim();
+      const altText = altTextInput.value.trim();
+      const sortOrderValue = sortOrderInput.value.trim();
+
+      if (!imageUrl) {
+        setImageMessage("画像URLを入力してください。", "error");
+        return;
+      }
+
+      const sortOrder =
+        sortOrderValue === "" ? undefined : Number(sortOrderValue);
+
+      if (sortOrder !== undefined && !Number.isFinite(sortOrder)) {
+        setImageMessage("表示順は数値で入力してください。", "error");
+        return;
+      }
+
+      addButton.disabled = true;
+      addButton.textContent = "追加中...";
+
+      try {
+        await requestJson(
+          `/api/admin/properties/${encodeURIComponent(slug)}/images`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              imageUrl,
+              altText: altText || null,
+              sortOrder,
+            }),
+          },
+        );
+
+        imageUrlInput.value = "";
+        altTextInput.value = "";
+        sortOrderInput.value = "10";
+
+        setImageMessage("画像を追加しました。", "success");
+        await loadPropertyImages();
+      } catch (error) {
+        console.error("[admin property images] create failed", error);
+        setImageMessage(
+          error instanceof Error ? error.message : "画像の追加に失敗しました。",
+          "error",
+        );
+      } finally {
+        addButton.disabled = false;
+        addButton.textContent = "画像を追加";
+      }
+    });
+
+    imageList.addEventListener("click", async (event) => {
+      const target = event.target;
+
+      if (!(target instanceof HTMLElement)) return;
+
+      const saveButton = target.closest("[data-admin-image-save-button]");
+      const deleteButton = target.closest("[data-admin-image-delete-button]");
+
+      if (!saveButton && !deleteButton) return;
+
+      const imageItem = target.closest("[data-admin-image-item]");
+
+      if (!(imageItem instanceof HTMLElement)) return;
+
+      const imageId = imageItem.dataset.imageId;
+
+      if (!imageId) {
+        setImageMessage("画像IDを取得できませんでした。", "error");
+        return;
+      }
+
+      if (saveButton) {
+        const imageUrlInput = imageItem.querySelector("[data-admin-image-url]");
+        const altTextInput = imageItem.querySelector("[data-admin-image-alt]");
+        const sortOrderInput = imageItem.querySelector("[data-admin-image-sort]");
+
+        if (!(imageUrlInput instanceof HTMLInputElement)) return;
+        if (!(altTextInput instanceof HTMLInputElement)) return;
+        if (!(sortOrderInput instanceof HTMLInputElement)) return;
+
+        const imageUrl = imageUrlInput.value.trim();
+        const altText = altTextInput.value.trim();
+        const sortOrder = Number(sortOrderInput.value);
+
+        if (!imageUrl) {
+          setImageMessage("画像URLを入力してください。", "error");
+          return;
+        }
+
+        if (!Number.isFinite(sortOrder)) {
+          setImageMessage("表示順は数値で入力してください。", "error");
+          return;
+        }
+
+        try {
+          await requestJson(
+            `/api/admin/property-images/${encodeURIComponent(imageId)}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({
+                imageUrl,
+                altText: altText || null,
+                sortOrder,
+              }),
+            },
+          );
+
+          setImageMessage("画像情報を保存しました。", "success");
+          await loadPropertyImages();
+        } catch (error) {
+          console.error("[admin property images] update failed", error);
+          setImageMessage(
+            error instanceof Error ? error.message : "画像情報の保存に失敗しました。",
+            "error",
+          );
+        }
+      }
+
+      if (deleteButton) {
+        const confirmed = window.confirm("この画像を削除しますか？");
+
+        if (!confirmed) return;
+
+        try {
+          await requestJson(
+            `/api/admin/property-images/${encodeURIComponent(imageId)}`,
+            {
+              method: "DELETE",
+            },
+          );
+
+          setImageMessage("画像を削除しました。", "success");
+          await loadPropertyImages();
+        } catch (error) {
+          console.error("[admin property images] delete failed", error);
+          setImageMessage(
+            error instanceof Error ? error.message : "画像の削除に失敗しました。",
+            "error",
+          );
+        }
+      }
+    });
+  };
+
+  const render = (item, features, flashMessage = "") => {
+    if (!root) return;
+
+    const selectedFeatureIds = new Set(item.featureIds ?? []);
+
+    root.innerHTML = `
+      <form class="admin-form" data-admin-property-form novalidate>
+        <div class="admin-form__actions">
+          <a href="/admin/properties" class="admin-button admin-button--secondary">一覧へ戻る</a>
+          <button type="submit" class="admin-button" data-admin-save-button>保存する</button>
+        </div>
+
+        <p class="${flashMessage ? "admin-success-text" : "admin-card__text"}" data-admin-form-message>
+          ${escapeHtml(flashMessage)}
+        </p>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-field">
+            <label>slug</label>
+            <input type="text" value="${inputValue(item.slug)}" disabled />
+          </div>
+
+          <div class="admin-form-field">
+            <label>状態</label>
+            <select name="status">
+              <option value="draft" ${item.status === "draft" ? "selected" : ""}>draft</option>
+              <option value="published" ${item.status === "published" ? "selected" : ""}>published</option>
+              <option value="archived" ${item.status === "archived" ? "selected" : ""}>archived</option>
+            </select>
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>物件名</label>
+            <input type="text" name="title" value="${inputValue(item.title)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>物件種別</label>
+            <select name="propertyType">
+              <option value="house" ${item.propertyType === "house" ? "selected" : ""}>house</option>
+              <option value="land" ${item.propertyType === "land" ? "selected" : ""}>land</option>
+            </select>
+          </div>
+
+          <div class="admin-form-field">
+            <label>取引種別</label>
+            <select name="transactionType">
+              <option value="sale" ${item.transactionType === "sale" ? "selected" : ""}>sale</option>
+            </select>
+          </div>
+
+          <div class="admin-form-field">
+            <label>都道府県</label>
+            <input type="text" name="prefecture" value="${inputValue(item.prefecture)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>市区町村</label>
+            <input type="text" name="city" value="${inputValue(item.city)}" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>住所</label>
+            <input type="text" name="address" value="${inputValue(item.address)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>価格</label>
+            <input type="number" name="price" value="${numberValue(item.price)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>土地面積（㎡）</label>
+            <input type="number" step="0.01" name="landAreaSqm" value="${numberValue(item.landAreaSqm)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>建物面積（㎡）</label>
+            <input type="number" step="0.01" name="buildingAreaSqm" value="${numberValue(item.buildingAreaSqm)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>間取り</label>
+            <input type="text" name="layout" value="${inputValue(item.layout)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>築年</label>
+            <input type="number" name="builtYear" value="${numberValue(item.builtYear)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>築月</label>
+            <input type="number" name="builtMonth" value="${numberValue(item.builtMonth)}" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>アクセス情報</label>
+            <input type="text" name="accessInfo" value="${inputValue(item.accessInfo)}" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>説明文</label>
+            <textarea rows="6" name="description">${inputValue(item.description)}</textarea>
+          </div>
+        </div>
+
+        <div class="admin-section__panel" style="margin-top: 24px;">
+          <h2 class="admin-card__title">feature 編集</h2>
+          <div class="admin-feature-grid">
+            ${features
+              .map(
+                (feature) => `
+                  <label class="admin-feature-option">
+                    <input
+                      type="checkbox"
+                      name="featureIds"
+                      value="${escapeHtml(feature.id)}"
+                      ${selectedFeatureIds.has(feature.id) ? "checked" : ""}
+                    />
+                    <span>${escapeHtml(feature.name)}</span>
+                  </label>
+                `,
+              )
+              .join("")}
+          </div>
+        </div>
+
+        <div class="admin-section__panel" style="margin-top: 24px;" data-admin-image-manager>
+          <h2 class="admin-card__title">画像管理</h2>
+          <p class="admin-card__text">
+            画像URL、altテキスト、表示順を管理します。表示順が一番小さい画像をサムネイルとして扱います。
+          </p>
+
+          <div class="admin-form-grid" style="margin-top: 16px;">
+            <div class="admin-form-field admin-form-field--full">
+              <label>画像URL</label>
+              <input
+                type="url"
+                data-admin-image-new-url
+                placeholder="https://example.com/image.jpg"
+              />
+            </div>
+
+            <div class="admin-form-field">
+              <label>altテキスト</label>
+              <input
+                type="text"
+                data-admin-image-new-alt
+                placeholder="外観写真"
+              />
+            </div>
+
+            <div class="admin-form-field">
+              <label>表示順</label>
+              <input
+                type="number"
+                data-admin-image-new-sort
+                value="10"
+              />
+            </div>
+          </div>
+
+          <div class="admin-form__actions" style="margin-top: 16px;">
+            <button type="button" class="admin-button" data-admin-image-add-button>
+              画像を追加
+            </button>
+          </div>
+
+          <p class="admin-card__text" style="margin-top: 12px;" data-admin-image-message></p>
+
+          <div data-admin-image-list style="margin-top: 16px;">
+            ${renderImageCardsHtml(item.images ?? [])}
+          </div>
+        </div>
+
+        <p class="admin-card__text" style="margin-top: 16px;">
+          公開日時: ${escapeHtml(formatDateTime(item.publishedAt))}
+        </p>
+      </form>
+    `;
+
+    bindForm();
+    bindImageManager();
+    void loadPropertyImages();
+  };
+
+  const load = async (flashMessage = "") => {
+    if (!slug) {
+      renderError("slug を取得できませんでした。");
+      return;
+    }
+
+    try {
+      const [item, features] = await Promise.all([
+        fetchDetail(`/api/admin/properties/${encodeURIComponent(slug)}`),
+        fetchDetail("/api/admin/features"),
+      ]);
+
+      render(item, features, flashMessage);
+    } catch (error) {
+      console.error("[admin property] detail load failed", error);
+      renderError(error instanceof Error ? error.message : "物件詳細の取得に失敗しました。");
+    }
+  };
+
+  void load();
+</script>

@@ -1,0 +1,45 @@
+---
+import type { AdminNavItem } from "../../lib/admin/nav";
+
+type Props = {
+  items: AdminNavItem[];
+  currentPath: string;
+};
+
+const { items, currentPath } = Astro.props as Props;
+
+const isActivePath = (href: string) => {
+  if (href === "/admin") return currentPath === "/admin";
+  return currentPath === href || currentPath.startsWith(`${href}/`);
+};
+---
+
+<aside class="admin-sidebar">
+  <div class="admin-sidebar__brand">
+    <a href="/admin" class="admin-sidebar__brand-link">
+      <span class="admin-sidebar__brand-main">Real Estate Admin</span>
+      <span class="admin-sidebar__brand-sub">運用管理画面</span>
+    </a>
+  </div>
+
+  <nav class="admin-sidebar__nav" aria-label="管理メニュー">
+    <ul class="admin-sidebar__list">
+      {items.map((item) => (
+        <li class="admin-sidebar__item">
+          <a
+            href={item.href}
+            class:list={[
+              "admin-sidebar__link",
+              { "is-active": isActivePath(item.href) },
+            ]}
+          >
+            <span class="admin-sidebar__label">{item.label}</span>
+            {item.description && (
+              <span class="admin-sidebar__description">{item.description}</span>
+            )}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+</aside>

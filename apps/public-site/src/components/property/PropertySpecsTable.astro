@@ -1,0 +1,229 @@
+---
+import type { PropertyDetail } from "../../types/property";
+import {
+  formatArea,
+  formatJapaneseDate,
+  formatPropertyTypeLabel,
+} from "../../lib/utils/format";
+
+interface Props {
+  property: PropertyDetail;
+}
+
+const { property } = Astro.props;
+
+type PropertyLocationShape = {
+  prefecture?: string;
+  city?: string;
+  address1?: string;
+  address2?: string;
+  nearestStation?: string;
+  accessNote?: string;
+};
+
+type ExtendedPropertyDetail = PropertyDetail & {
+  transactionType?: string;
+  buildingYear?: number;
+  builtYear?: number;
+  buildingMonth?: number;
+  builtMonth?: number;
+  updatedAt?: string;
+};
+
+const detail = property as ExtendedPropertyDetail;
+
+const location: PropertyLocationShape =
+  (property as { location?: PropertyLocationShape }).location ?? {};
+
+const accessText = [location.nearestStation, location.accessNote]
+  .filter(Boolean)
+  .join(" / ");
+
+const addressText =
+  [
+    location.prefecture,
+    location.city,
+    location.address1,
+    location.address2,
+  ]
+    .filter(Boolean)
+    .join("") || "-";
+
+const buildingYear = detail.buildingYear ?? detail.builtYear;
+const buildingMonth = detail.buildingMonth ?? detail.builtMonth;
+
+const builtText = buildingYear
+  ? buildingMonth
+    ? `${buildingYear}年${buildingMonth}月`
+    : `${buildingYear}年`
+  : "-";
+
+const formatPrice = (price?: number) => {
+  if (price === undefined || price === null) return "-";
+  return `${Math.round(price / 10000).toLocaleString()}万円`;
+};
+
+const formatTransactionType = (value?: string) => {
+  switch (value) {
+    case "sale":
+      return "売買";
+    case "rent":
+      return "賃貸";
+    case "seller":
+      return "売主";
+    case "agency":
+      return "代理";
+    case "brokerage":
+    case "mediation":
+      return "媒介";
+    default:
+      return value ?? "-";
+  }
+};
+
+const commonRows = [
+  {
+    label: "物件種別",
+    value: formatPropertyTypeLabel(property.type),
+  },
+  {
+    label: "価格",
+    value: formatPrice(property.price),
+  },
+  {
+    label: "所在地",
+    value: addressText,
+  },
+  {
+    label: "アクセス情報",
+    value: accessText || "-",
+  },
+  {
+    label: "土地面積",
+    value: formatArea(detail.landAreaSqm),
+  },
+];
+
+const typeSpecificRows =
+  property.type === "house"
+    ? [
+        {
+          label: "建物面積",
+          value: formatArea(detail.buildingAreaSqm),
+        },
+        {
+          label: "間取り",
+          value: detail.floorPlan ?? "-",
+        },
+        {
+          label: "築年",
+          value: builtText,
+        },
+      ]
+    : [];
+
+const footerRows = [
+  {
+    label: "取引種別",
+    value: formatTransactionType(detail.transactionType),
+  },
+  {
+    label: "更新日",
+    value: detail.updatedAt ? formatJapaneseDate(detail.updatedAt) : "-",
+  },
+];
+
+const rows = [...commonRows, ...typeSpecificRows, ...footerRows];
+---
+
+<section class="specs">
+  <div class="section-header">
+    <h2>物件概要</h2>
+    <p>公開情報をもとに、物件の基本情報を掲載しています。</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <tbody>
+        {rows.map((row) => (
+          <tr>
+            <th>{row.label}</th>
+            <td>{row.value}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+  .specs {
+    display: grid;
+    gap: 16px;
+  }
+
+  .section-header h2 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    color: #111827;
+  }
+
+  .section-header p {
+    margin: 0;
+    color: #4b5563;
+    line-height: 1.8;
+  }
+
+  .table-wrap {
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    background: #fff;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    padding: 16px 18px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  tr:last-child th,
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  th {
+    width: 180px;
+    background: #f9fafb;
+    color: #374151;
+    font-weight: 700;
+  }
+
+  td {
+    color: #111827;
+  }
+
+  @media (max-width: 768px) {
+    th,
+    td {
+      display: block;
+      width: auto;
+    }
+
+    th {
+      border-bottom: none;
+      padding-bottom: 8px;
+    }
+
+    td {
+      padding-top: 0;
+    }
+  }
+</style>

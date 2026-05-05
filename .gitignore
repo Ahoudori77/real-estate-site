@@ -1,0 +1,33 @@
+
+# env
+.env
+.env.*
+.dev.vars
+
+# dependencies
+node_modules/
+
+# build outputs
+dist/
+.azure/
+.output/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# OS / editor
+.DS_Store
+.vscode/
+
+# Cloudflare local state
+.wrangler/
+**/.wrangler/
+
+# Windows zone identifier files
+*:Zone.Identifier
+
+# Azure Functions local settings
+local.settings.json

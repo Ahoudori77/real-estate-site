@@ -1,0 +1,20 @@
+---
+type Props = {
+  title: string;
+  description?: string;
+};
+
+const { title, description } = Astro.props as Props;
+---
+
+<header class="admin-header">
+  <div>
+    <p class="admin-header__eyebrow">Admin Console</p>
+    <h1 class="admin-header__title">{title}</h1>
+    {description && <p class="admin-header__description">{description}</p>}
+  </div>
+
+  <div class="admin-header__meta">
+    <span class="admin-header__badge">dev</span>
+  </div>
+</header>

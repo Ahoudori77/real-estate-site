@@ -1,0 +1,242 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout
+  title="物件管理"
+  description="物件一覧を確認し、公開状態や編集導線を分かりやすく整理しています。"
+  currentSection="properties"
+>
+  <section class="admin-section">
+    <div class="admin-section__panel">
+      <div id="admin-properties-root">
+        <p class="admin-loading">物件一覧を読み込み中...</p>
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  import { fetchList, escapeHtml, formatDateTime } from "../../lib/admin/client";
+
+  const root = document.getElementById("admin-properties-root");
+
+  const normalizeListResponse = (response) => {
+    if (Array.isArray(response)) {
+      return {
+        items: response,
+        total: response.length,
+      };
+    }
+
+    const items = Array.isArray(response?.items) ? response.items : [];
+
+    return {
+      items,
+      total: Number(response?.total ?? items.length),
+    };
+  };
+
+  const formatPrice = (value) => {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) {
+      return "-";
+    }
+
+    return new Intl.NumberFormat("ja-JP", {
+      style: "currency",
+      currency: "JPY",
+      maximumFractionDigits: 0,
+    }).format(Number(value));
+  };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case "published":
+        return "公開";
+      case "draft":
+        return "下書き";
+      case "archived":
+        return "アーカイブ";
+      default:
+        return status ?? "-";
+    }
+  };
+
+  const getStatusClass = (status) => {
+    switch (status) {
+      case "published":
+        return "admin-badge admin-badge--published";
+      case "draft":
+        return "admin-badge admin-badge--draft";
+      case "archived":
+        return "admin-badge admin-badge--archived";
+      default:
+        return "admin-badge admin-badge--neutral";
+    }
+  };
+
+  const renderError = (message) => {
+    if (!root) return;
+    root.innerHTML = `<p class="admin-error">${escapeHtml(message)}</p>`;
+  };
+
+  const renderEmpty = () => {
+    if (!root) return;
+
+    root.innerHTML = `
+      <div class="admin-summary-grid">
+        <div class="admin-summary-card">
+          <p class="admin-summary-card__label">総件数</p>
+          <p class="admin-summary-card__value">0</p>
+          <p class="admin-summary-card__note">登録済み物件はありません。</p>
+        </div>
+        <div class="admin-summary-card">
+          <p class="admin-summary-card__label">公開中</p>
+          <p class="admin-summary-card__value">0</p>
+          <p class="admin-summary-card__note">公開中の物件はありません。</p>
+        </div>
+        <div class="admin-summary-card">
+          <p class="admin-summary-card__label">下書き / アーカイブ</p>
+          <p class="admin-summary-card__value">0</p>
+          <p class="admin-summary-card__note">状態管理対象の物件はありません。</p>
+        </div>
+      </div>
+
+      <div class="admin-section__panel" style="margin-top: 20px;">
+        <div class="admin-list-header">
+          <div>
+            <h2 class="admin-list-header__title">物件一覧</h2>
+            <p class="admin-list-header__meta">最初の物件を作成してください。</p>
+          </div>
+
+          <a href="/admin/properties/new" class="admin-button">新規物件を追加</a>
+        </div>
+
+        <div class="admin-empty-state">
+          <p class="admin-empty-state__title">物件がまだ登録されていません</p>
+          <p class="admin-empty-state__text">
+            新規物件を追加して、作成後に詳細編集画面で feature や画像を設定してください。
+          </p>
+        </div>
+      </div>
+    `;
+  };
+
+  const render = (response) => {
+    if (!root) return;
+
+    const { items, total } = normalizeListResponse(response);
+
+    if (!items.length) {
+      renderEmpty();
+      return;
+    }
+
+    const publishedCount = items.filter((item) => item.status === "published").length;
+    const otherCount = items.filter((item) => item.status !== "published").length;
+
+    root.innerHTML = `
+      <div class="admin-summary-grid">
+        <div class="admin-summary-card">
+          <p class="admin-summary-card__label">総件数</p>
+          <p class="admin-summary-card__value">${escapeHtml(total)}</p>
+          <p class="admin-summary-card__note">現在管理中の物件件数です。</p>
+        </div>
+
+        <div class="admin-summary-card">
+          <p class="admin-summary-card__label">公開中</p>
+          <p class="admin-summary-card__value">${escapeHtml(publishedCount)}</p>
+          <p class="admin-summary-card__note">一般公開中の物件件数です。</p>
+        </div>
+
+        <div class="admin-summary-card">
+          <p class="admin-summary-card__label">下書き / アーカイブ</p>
+          <p class="admin-summary-card__value">${escapeHtml(otherCount)}</p>
+          <p class="admin-summary-card__note">未公開または保留中の物件件数です。</p>
+        </div>
+      </div>
+
+      <div class="admin-section__panel" style="margin-top: 20px;">
+        <div class="admin-list-header">
+          <div>
+            <h2 class="admin-list-header__title">物件一覧</h2>
+            <p class="admin-list-header__meta">編集したい物件を選択してください。</p>
+          </div>
+
+          <a href="/admin/properties/new" class="admin-button">新規物件を追加</a>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>物件</th>
+                <th>状態</th>
+                <th>種別</th>
+                <th>所在地</th>
+                <th>価格</th>
+                <th>公開日時</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items
+                .map(
+                  (item) => `
+                    <tr>
+                      <td>
+                        <div class="admin-cell-title">
+                          <span class="admin-cell-main">${escapeHtml(item.title ?? "-")}</span>
+                          <span class="admin-inline-text-muted">slug: ${escapeHtml(item.slug ?? "-")}</span>
+                        </div>
+                      </td>
+
+                      <td>
+                        <span class="${getStatusClass(item.status)}">
+                          ${escapeHtml(getStatusLabel(item.status))}
+                        </span>
+                      </td>
+
+                      <td>${escapeHtml(item.propertyType ?? "-")}</td>
+
+                      <td>
+                        ${escapeHtml(item.prefecture ?? "-")}
+                        ${item.city ? ` / ${escapeHtml(item.city)}` : ""}
+                      </td>
+
+                      <td>${escapeHtml(formatPrice(item.price))}</td>
+
+                      <td>${escapeHtml(formatDateTime(item.publishedAt))}</td>
+
+                      <td>
+                        <a
+                          href="/admin/properties/${encodeURIComponent(item.slug ?? "")}"
+                          class="admin-link-button"
+                        >
+                          編集する
+                        </a>
+                      </td>
+                    </tr>
+                  `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  };
+
+  const load = async () => {
+    try {
+      const response = await fetchList("/api/admin/properties");
+      render(response);
+    } catch (error) {
+      renderError(error instanceof Error ? error.message : "物件一覧の取得に失敗しました。");
+    }
+  };
+
+  void load();
+</script>

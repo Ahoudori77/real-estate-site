@@ -1,0 +1,296 @@
+---
+import PublicSiteLayout from "../layouts/PublicSiteLayout.astro";
+import ContactCta from "../components/layout/ContactCta.astro";
+
+const companyInfo = [
+  { label: "会社名", value: "みやび共栄土地株式会社" },
+  { label: "所在地", value: "〒000-0000 兵庫県○○市○○町0-0-0" },
+  { label: "電話番号", value: "000-0000-0000" },
+  { label: "営業時間", value: "9:00〜18:00" },
+  { label: "定休日", value: "土曜・日曜・祝日" },
+  { label: "事業内容", value: "土地・戸建ての売買仲介、不動産相談" },
+];
+
+const mainImage = {
+  src: "",
+  alt: "地域に根ざした不動産相談のイメージ",
+};
+---
+
+<PublicSiteLayout
+  title="会社情報 | みやび共栄土地株式会社"
+  description="みやび共栄土地株式会社の会社情報ページです。京都北部・丹波・但馬エリアを中心に、土地・戸建てのご相談を承っています。"
+>
+  <div class="company-page">
+    <section class="company-hero">
+      <div class="container">
+        <div class="company-hero__inner">
+          <p class="company-hero__eyebrow">COMPANY</p>
+          <h1 class="company-hero__title">会社情報</h1>
+          <p class="company-hero__lead">
+            京都北部・丹波・但馬エリアを中心に、土地・戸建ての売買を丁寧にサポートします。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="company-intro section section--plain">
+      <div class="container">
+        <div class="company-intro__layout">
+          <div class="company-intro__content">
+            <p class="company-section-eyebrow">MESSAGE</p>
+            <h2>地域の暮らしに寄り添う、不動産相談を。</h2>
+            <p>
+              みやび共栄土地株式会社は、土地・戸建てを中心に、物件探しや売却のご相談を承っています。
+              地域の環境や暮らしやすさにも目を向けながら、お客様のご希望に合う選択ができるよう丁寧にお手伝いします。
+            </p>
+            <p>
+              初めて不動産を購入される方にも、条件整理から物件紹介、現地確認、ご契約まで一つひとつわかりやすくご案内いたします。
+            </p>
+          </div>
+
+          <div class="company-intro__visual">
+            {
+              mainImage.src ? (
+                <img src={mainImage.src} alt={mainImage.alt} loading="lazy" />
+              ) : (
+                <div class="company-intro__placeholder">
+                  <span>IMAGE</span>
+                  <p>会社外観・相談風景・地域写真などを差し込めます</p>
+                </div>
+              )
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="company-overview section section--warm">
+      <div class="container">
+        <div class="company-section-header">
+          <p class="company-section-eyebrow">PROFILE</p>
+          <h2>会社概要</h2>
+          <p>基本情報をご確認いただけます。</p>
+        </div>
+
+        <div class="company-table">
+          {companyInfo.map((item) => (
+            <div class="company-table__row">
+              <div class="company-table__label">{item.label}</div>
+              <div class="company-table__value">{item.value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <ContactCta />
+  </div>
+</PublicSiteLayout>
+
+<style>
+  .company-page {
+    background: #ffffff;
+  }
+
+  .company-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 84px 0 72px;
+    background:
+      linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.9) 0%,
+        rgba(255, 255, 255, 0.72) 48%,
+        rgba(255, 255, 255, 0.38) 100%
+      ),
+      url("/images/sections/hero-bg.jpg");
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid rgba(138, 31, 15, 0.12);
+  }
+
+  .company-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(46, 10, 5, 0.05);
+    pointer-events: none;
+  }
+
+  .company-hero__inner {
+    position: relative;
+    z-index: 1;
+    max-width: 760px;
+  }
+
+  .company-hero__eyebrow,
+  .company-section-eyebrow {
+    margin: 0 0 12px;
+    color: var(--color-accent);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+  }
+
+  .company-hero__title {
+    margin: 0 0 16px;
+    color: var(--color-text);
+    font-size: clamp(34px, 5vw, 52px);
+    line-height: 1.18;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+  }
+
+  .company-hero__lead {
+    margin: 0;
+    max-width: 680px;
+    color: var(--color-text);
+    font-weight: 800;
+    line-height: 1.9;
+  }
+
+  .company-intro__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+    gap: 56px;
+    align-items: center;
+  }
+
+  .company-intro__content h2,
+  .company-section-header h2 {
+    margin: 0 0 18px;
+    color: var(--color-text);
+    font-size: clamp(30px, 3.4vw, 44px);
+    line-height: 1.28;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+  }
+
+  .company-intro__content p {
+    margin: 0;
+    color: var(--color-muted);
+    font-weight: 700;
+    line-height: 2;
+  }
+
+  .company-intro__content p + p {
+    margin-top: 18px;
+  }
+
+  .company-intro__visual {
+    min-height: 380px;
+    border: 1px solid rgba(138, 31, 15, 0.14);
+    border-radius: 30px;
+    background: #f7eeed;
+    overflow: hidden;
+    box-shadow: 0 20px 52px rgba(46, 10, 5, 0.08);
+  }
+
+  .company-intro__visual img {
+    width: 100%;
+    height: 100%;
+    min-height: 380px;
+    object-fit: cover;
+  }
+
+  .company-intro__placeholder {
+    min-height: 380px;
+    display: grid;
+    place-content: center;
+    gap: 12px;
+    padding: 32px;
+    text-align: center;
+  }
+
+  .company-intro__placeholder span {
+    color: rgba(231, 52, 24, 0.34);
+    font-size: 46px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+  }
+
+  .company-intro__placeholder p {
+    margin: 0;
+    color: var(--color-muted);
+    font-weight: 700;
+  }
+
+  .company-section-header {
+    max-width: 760px;
+    margin: 0 auto 34px;
+    text-align: center;
+  }
+
+  .company-section-header--left {
+    margin: 0 0 24px;
+    text-align: left;
+  }
+
+  .company-section-header p {
+    margin: 0;
+    color: var(--color-muted);
+    font-weight: 700;
+    line-height: 1.9;
+  }
+
+  .company-table {
+    overflow: hidden;
+    border: 1px solid rgba(138, 31, 15, 0.14);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 18px 42px rgba(46, 10, 5, 0.08);
+  }
+
+  .company-table__row {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    border-bottom: 1px solid rgba(138, 31, 15, 0.1);
+  }
+
+  .company-table__row:last-child {
+    border-bottom: 0;
+  }
+
+  .company-table__label {
+    padding: 20px 24px;
+    background: #f7eeed;
+    color: var(--color-text);
+    font-weight: 900;
+  }
+
+  .company-table__value {
+    padding: 20px 24px;
+    color: var(--color-muted);
+    font-weight: 700;
+    line-height: 1.8;
+  }
+
+  @media (max-width: 900px) {
+    .company-intro__layout {
+      grid-template-columns: 1fr;
+      gap: 34px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .company-hero {
+      padding: 64px 0 52px;
+    }
+
+    .company-table__row {
+      grid-template-columns: 1fr;
+    }
+
+    .company-table__label,
+    .company-table__value {
+      padding: 16px 18px;
+    }
+
+    .company-intro__visual,
+    .company-intro__visual img,
+    .company-intro__placeholder {
+      min-height: 300px;
+    }
+  }
+</style>

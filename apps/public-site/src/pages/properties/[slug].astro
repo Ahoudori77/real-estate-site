@@ -1,0 +1,489 @@
+---
+export const prerender = false;
+
+import Breadcrumbs from "../../components/common/Breadcrumbs.astro";
+import InquiryForm from "../../components/forms/InquiryForm.astro";
+import PropertyGallery from "../../components/property/PropertyGallery.astro";
+import PropertySpecsTable from "../../components/property/PropertySpecsTable.astro";
+import RelatedProperties from "../../components/property/RelatedProperties.astro";
+import PublicSiteLayout from "../../layouts/PublicSiteLayout.astro";
+import {
+  getPropertyBySlug,
+  getRelatedProperties,
+} from "../../lib/api/properties";
+import {
+  formatArea,
+  formatPriceToManYen,
+  formatPropertyTypeLabel,
+} from "../../lib/utils/format";
+
+const { slug } = Astro.params;
+
+const property = slug ? await getPropertyBySlug(slug) : null;
+
+if (!property) {
+  Astro.response.status = 404;
+}
+
+const relatedProperties = property
+  ? await getRelatedProperties(property, 3)
+  : [];
+
+const breadcrumbItems = property
+  ? [
+      { label: "ホーム", href: "/" },
+      { label: "物件一覧", href: "/properties" },
+      { label: property.title },
+    ]
+  : [
+      { label: "ホーム", href: "/" },
+      { label: "物件一覧", href: "/properties" },
+      { label: "物件が見つかりません" },
+    ];
+
+const accessText = property
+  ? [property.location.nearestStation, property.location.accessNote]
+      .filter(Boolean)
+      .join(" / ")
+  : "";
+
+const galleryImages = property
+  ? [...(property.images ?? [])].sort((a, b) => {
+      const sortA = Number(a.sortOrder ?? 0);
+      const sortB = Number(b.sortOrder ?? 0);
+
+      if (sortA !== sortB) return sortA - sortB;
+
+      const idA = Number(a.id);
+      const idB = Number(b.id);
+
+      if (Number.isFinite(idA) && Number.isFinite(idB)) {
+        return idA - idB;
+      }
+
+      return String(a.id ?? "").localeCompare(String(b.id ?? ""));
+    })
+  : [];
+---
+
+<PublicSiteLayout
+  title={
+    property
+      ? `${property.title} | 不動産サイト`
+      : "物件が見つかりません | 不動産サイト"
+  }
+  description={
+    property?.description ?? "土地・戸建ての詳細情報ページです。"
+  }
+>
+  <main class="property-detail-page">
+    <section class="breadcrumb-section">
+      <div class="container">
+        <Breadcrumbs items={breadcrumbItems} />
+      </div>
+    </section>
+
+    {property ? (
+      <>
+        <section class="hero-section">
+          <div class="container hero-grid">
+            <div class="hero-main">
+              <div class="badges">
+                <span class="type-badge">
+                  {formatPropertyTypeLabel(property.type)}
+                </span>
+                {(property.features ?? []).slice(0, 3).map((feature) => (
+                  <span class="feature-badge">{feature}</span>
+                ))}
+              </div>
+
+              <h1>{property.title}</h1>
+              <p class="price">{formatPriceToManYen(property.price)}</p>
+
+              <dl class="summary-list">
+                <div>
+                  <dt>所在地</dt>
+                  <dd>
+                    {[
+                      property.location.prefecture,
+                      property.location.city,
+                      property.location.address1,
+                      property.location.address2,
+                    ]
+                      .filter(Boolean)
+                      .join("") || "-"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>アクセス交通</dt>
+                  <dd>{accessText || "-"}</dd>
+                </div>
+                <div>
+                  <dt>土地面積</dt>
+                  <dd>{formatArea(property.landAreaSqm)}</dd>
+                </div>
+                {property.type === "house" && (
+                  <>
+                    <div>
+                      <dt>建物面積</dt>
+                      <dd>{formatArea(property.buildingAreaSqm)}</dd>
+                    </div>
+                    <div>
+                      <dt>間取り</dt>
+                      <dd>{property.floorPlan ?? "-"}</dd>
+                    </div>
+                  </>
+                )}
+              </dl>
+            </div>
+
+            <aside class="contact-panel">
+              <p class="contact-heading">この物件へのお問い合わせ</p>
+              <p class="contact-copy">
+                現地見学、資料請求、ローン相談などお気軽にお問い合わせください。
+              </p>
+              <a href="#property-inquiry-form" class="contact-button">
+                お問い合わせする
+              </a>
+              <a href="/search" class="secondary-link">条件を変えて探す</a>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page-section gallery-section">
+          <div class="container">
+            <PropertyGallery title={property.title} images={galleryImages} />
+          </div>
+        </section>
+
+        <section class="page-section description-section">
+          <div class="container two-column">
+            <div class="main-column">
+              <section class="description-card panel-card">
+                <div class="section-header">
+                  <h2>おすすめポイント</h2>
+                  <p>物件の魅力をわかりやすくご案内します。</p>
+                </div>
+
+                <p class="description-text">
+                  {property.description ??
+                    "詳細コメントは現在準備中です。最新情報はお問い合わせください。"}
+                </p>
+              </section>
+
+              <PropertySpecsTable property={property} />
+
+              <section class="map-card panel-card">
+                <div class="section-header">
+                  <h2>周辺案内</h2>
+                  <p>地図や周辺環境の確認用エリアです。</p>
+                </div>
+
+                <div class="map-placeholder">
+                  地図表示は次フェーズで API / 地図連携予定
+                </div>
+              </section>
+
+              <section id="property-inquiry-form" class="inquiry-anchor">
+                <InquiryForm
+                  inquiryType="property"
+                  propertySlug={property.slug}
+                  title="この物件について問い合わせる"
+                  description="現地見学、資料請求、購入相談などはこちらのフォームからお問い合わせください。"
+                  submitLabel="この物件について送信する"
+                />
+              </section>
+            </div>
+
+            <aside class="side-column">
+              <section class="feature-card panel-card">
+                <div class="section-header">
+                  <h2>設備・特徴</h2>
+                  <p>現在公開している条件タグです。</p>
+                </div>
+
+                {(property.features ?? []).length > 0 ? (
+                  <ul class="feature-list">
+                    {(property.features ?? []).map((feature) => (
+                      <li>{feature}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p class="muted">特徴情報は準備中です。</p>
+                )}
+              </section>
+
+              <section class="cta-card panel-card">
+                <h2>見学予約・資料請求</h2>
+                <p>
+                  気になる点があれば、ページ下部のお問い合わせフォームからご連絡ください。
+                </p>
+                <a href="#property-inquiry-form" class="contact-button">
+                  フォームへ移動する
+                </a>
+              </section>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page-section related-section">
+          <div class="container">
+            <RelatedProperties items={relatedProperties} />
+          </div>
+        </section>
+      </>
+    ) : (
+      <section class="page-section not-found-section">
+        <div class="container">
+          <div class="not-found-card panel-card">
+            <h1>物件が見つかりませんでした</h1>
+            <p>
+              URLが正しいか確認するか、物件一覧から再度お探しください。
+            </p>
+            <a href="/properties" class="primary-button">物件一覧へ戻る</a>
+          </div>
+        </div>
+      </section>
+    )}
+  </main>
+</PublicSiteLayout>
+
+<style>
+  .breadcrumb-section {
+    padding: 20px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .hero-section {
+    padding: 40px 20px 32px;
+    background:
+      radial-gradient(circle at top right, rgba(255, 99, 71, 0.22), transparent 32%),
+      linear-gradient(135deg, #2f2724 0%, #49322d 100%);
+    color: #fff;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .hero-main {
+    display: grid;
+    gap: 18px;
+  }
+
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .type-badge,
+  .feature-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .type-badge {
+    background: #fff;
+    color: #111827;
+  }
+
+  .feature-badge {
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .hero-main h1 {
+    margin: 0;
+    font-size: clamp(30px, 5vw, 44px);
+    line-height: 1.25;
+  }
+
+  .price {
+    color: #ffb5a8;
+  }
+
+  .summary-list {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+  }
+
+  .summary-list div {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 12px;
+  }
+
+  .summary-list dt {
+    color: rgba(255, 255, 255, 0.72);
+    font-weight: 700;
+  }
+
+  .summary-list dd {
+    margin: 0;
+    color: #fff;
+  }
+
+  .contact-panel {
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .contact-heading {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+  }
+
+  .contact-copy {
+    margin: 0;
+    line-height: 1.8;
+    color: rgba(255, 255, 255, 0.88);
+  }
+
+  .contact-button,
+  .secondary-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    padding: 0 18px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  .contact-button {
+    background: var(--color-accent);
+    color: #fff;
+  }
+
+  .contact-button:hover {
+    background: var(--color-accent-dark);
+  }
+
+  .secondary-link {
+    background: transparent;
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+  }
+
+  .gallery-section {
+    padding-bottom: 0;
+  }
+
+  .two-column {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .main-column,
+  .side-column {
+    display: grid;
+    gap: 24px;
+  }
+
+  .inquiry-anchor {
+    scroll-margin-top: 96px;
+  }
+
+  .section-header h2,
+  .cta-card h2,
+  .not-found-card h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    color: #111827;
+  }
+
+  .section-header p,
+  .cta-card p,
+  .not-found-card p {
+    margin: 0;
+    color: #4b5563;
+    line-height: 1.8;
+  }
+
+  .description-text {
+    margin: 20px 0 0;
+    color: #111827;
+    line-height: 2;
+    white-space: pre-line;
+  }
+
+  .feature-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    list-style: none;
+    margin: 20px 0 0;
+    padding: 0;
+  }
+
+  .feature-list li {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 14px;
+    border: 1px solid rgba(233, 71, 46, 0.18);
+    border-radius: 999px;
+    background: #fff4f1;
+    color: var(--color-accent-dark);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .muted {
+    margin: 20px 0 0;
+    color: #6b7280;
+  }
+
+  .map-placeholder {
+    display: grid;
+    place-items: center;
+    min-height: 260px;
+    margin-top: 20px;
+    border-radius: 16px;
+    background: #f9fafb;
+    border: 1px dashed #d1d5db;
+    color: #6b7280;
+    font-weight: 700;
+    text-align: center;
+    padding: 20px;
+  }
+
+  .not-found-card {
+    max-width: 720px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  @media (max-width: 960px) {
+    .hero-grid,
+    .two-column {
+      grid-template-columns: 1fr;
+    }
+
+    .summary-list div {
+      grid-template-columns: 84px 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,538 @@
+---
+import type { PropertyImage } from "../../types/property";
+
+interface Props {
+  title: string;
+  images: PropertyImage[];
+}
+
+const { title, images } = Astro.props;
+
+const sortedImages = [...(images ?? [])].sort((a, b) => {
+  const sortA = Number(a.sortOrder ?? 0);
+  const sortB = Number(b.sortOrder ?? 0);
+
+  if (sortA !== sortB) return sortA - sortB;
+
+  return String(a.id ?? "").localeCompare(String(b.id ?? ""));
+});
+
+const mainImage = sortedImages[0];
+
+const galleryId = `property-gallery-${Math.random()
+  .toString(36)
+  .slice(2, 10)}`;
+
+const galleryData = sortedImages.map((image, index) => ({
+  index,
+  url: image.url,
+  alt: image.alt ?? title,
+}));
+
+const galleryDataJson = JSON.stringify(galleryData);
+---
+
+<section id={galleryId} class="property-gallery">
+  {mainImage ? (
+    <>
+      <script
+        type="application/json"
+        data-gallery-json
+        set:html={galleryDataJson}
+      />
+
+      <button
+        type="button"
+        class="main-image-button"
+        data-gallery-main-button
+        aria-label="画像を拡大表示する"
+      >
+        <img
+          src={mainImage.url}
+          alt={mainImage.alt ?? title}
+          class="main-image"
+          data-gallery-main-image
+        />
+        <span class="zoom-label">クリックで拡大</span>
+      </button>
+
+      {sortedImages.length > 1 && (
+        <ul class="thumbnail-list" aria-label="物件画像一覧">
+          {sortedImages.map((image, index) => (
+            <li
+              class="thumbnail-item"
+              data-gallery-thumbnail-item
+              data-index={index}
+              hidden={index === 0}
+            >
+              <button
+                type="button"
+                class="thumbnail-button"
+                data-gallery-thumbnail
+                data-index={index}
+                aria-label={`${index + 1}枚目の画像を表示`}
+              >
+                <img
+                  src={image.url}
+                  alt={image.alt ?? title}
+                  class="thumbnail-image"
+                  loading="lazy"
+                />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <dialog class="image-dialog" data-gallery-dialog aria-label="拡大画像">
+        <div class="dialog-inner">
+          <button
+            type="button"
+            class="dialog-close"
+            data-gallery-close
+            aria-label="拡大画像を閉じる"
+          >
+            ×
+          </button>
+
+          {sortedImages.length > 1 && (
+            <>
+              <button
+                type="button"
+                class="dialog-nav dialog-nav--prev"
+                data-gallery-prev
+                aria-label="前の画像を表示"
+              >
+                <svg
+                  class="dialog-nav-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M15 6L9 12L15 18" />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                class="dialog-nav dialog-nav--next"
+                data-gallery-next
+                aria-label="次の画像を表示"
+              >
+                <svg
+                  class="dialog-nav-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <path d="M9 6L15 12L9 18" />
+                </svg>
+              </button>
+            </>
+          )}
+
+          <img
+            src={mainImage.url}
+            alt={mainImage.alt ?? title}
+            class="dialog-image"
+            data-gallery-modal-image
+          />
+        </div>
+      </dialog>
+    </>
+  ) : (
+    <div class="empty-image">画像は準備中です</div>
+  )}
+</section>
+
+<script define:vars={{ galleryId }}>
+  (() => {
+    const root = document.getElementById(galleryId);
+    if (!root) return;
+
+    const dataElement = root.querySelector("[data-gallery-json]");
+    const mainImage = root.querySelector("[data-gallery-main-image]");
+    const mainButton = root.querySelector("[data-gallery-main-button]");
+    const thumbnailItems = Array.from(
+      root.querySelectorAll("[data-gallery-thumbnail-item]"),
+    );
+    const thumbnailButtons = Array.from(
+      root.querySelectorAll("[data-gallery-thumbnail]"),
+    );
+    const dialog = root.querySelector("[data-gallery-dialog]");
+    const dialogImage = root.querySelector("[data-gallery-modal-image]");
+    const closeButton = root.querySelector("[data-gallery-close]");
+    const prevButton = root.querySelector("[data-gallery-prev]");
+    const nextButton = root.querySelector("[data-gallery-next]");
+
+    if (!dataElement || !mainImage || !mainButton) return;
+
+    let images = [];
+    let activeIndex = 0;
+
+    try {
+      images = JSON.parse(dataElement.textContent || "[]");
+    } catch {
+      images = [];
+    }
+
+    if (!Array.isArray(images) || images.length === 0) return;
+
+    const setActiveImage = (index) => {
+      const nextImage = images[index];
+      if (!nextImage) return;
+
+      activeIndex = index;
+
+      mainImage.src = nextImage.url;
+      mainImage.alt = nextImage.alt;
+
+      if (dialogImage) {
+        dialogImage.src = nextImage.url;
+        dialogImage.alt = nextImage.alt;
+      }
+
+      thumbnailItems.forEach((item) => {
+        const itemIndex = Number(item.dataset.index);
+        item.hidden = itemIndex === activeIndex;
+      });
+
+      thumbnailButtons.forEach((button) => {
+        const buttonIndex = Number(button.dataset.index);
+        button.setAttribute(
+          "aria-current",
+          buttonIndex === activeIndex ? "true" : "false",
+        );
+      });
+    };
+
+    const moveImage = (direction) => {
+      if (images.length <= 1) return;
+
+      const nextIndex =
+        (activeIndex + direction + images.length) % images.length;
+
+      setActiveImage(nextIndex);
+    };
+
+    thumbnailButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const index = Number(button.dataset.index);
+        setActiveImage(index);
+      });
+    });
+
+    const openDialog = () => {
+      if (!dialog) return;
+
+      if (typeof dialog.showModal === "function") {
+        dialog.showModal();
+      } else {
+        dialog.setAttribute("open", "");
+      }
+
+      closeButton?.focus();
+    };
+
+    const closeDialog = () => {
+      if (!dialog) return;
+
+      if (typeof dialog.close === "function") {
+        dialog.close();
+      } else {
+        dialog.removeAttribute("open");
+      }
+    };
+
+    mainButton.addEventListener("click", openDialog);
+    closeButton?.addEventListener("click", closeDialog);
+
+    prevButton?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      moveImage(-1);
+    });
+
+    nextButton?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      moveImage(1);
+    });
+
+    dialog?.addEventListener("click", (event) => {
+      if (event.target === dialog) {
+        closeDialog();
+      }
+    });
+
+    dialog?.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        moveImage(-1);
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        moveImage(1);
+      }
+    });
+
+    setActiveImage(0);
+  })();
+</script>
+
+<style>
+  .property-gallery {
+    display: grid;
+    gap: 16px;
+  }
+
+  .main-image-button {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    cursor: zoom-in;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    background: #f3f4f6;
+  }
+
+  .main-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    transition: transform 0.25s ease;
+  }
+
+  .main-image-button:hover .main-image {
+    transform: scale(1.02);
+  }
+
+  .zoom-label {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(17, 24, 39, 0.72);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .thumbnail-list {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    list-style: none;
+    margin: 0;
+    padding: 2px 2px 10px;
+    scroll-snap-type: x proximity;
+  }
+
+  .thumbnail-item {
+    flex: 0 0 clamp(110px, 18vw, 168px);
+    scroll-snap-align: start;
+  }
+
+  .thumbnail-button {
+    display: block;
+    width: 100%;
+    padding: 0;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    background: #f9fafb;
+    transition:
+      border-color 0.2s ease,
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .thumbnail-button:hover {
+    transform: translateY(-1px);
+    border-color: #b43a2f;
+    box-shadow: 0 8px 18px rgba(17, 24, 39, 0.12);
+  }
+
+  .thumbnail-button[aria-current="true"] {
+    border-color: #b43a2f;
+  }
+
+  .thumbnail-image {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+
+  .image-dialog {
+    position: fixed;
+    inset: 0;
+    width: min(1100px, calc(100vw - 32px));
+    max-width: none;
+    max-height: calc(100vh - 32px);
+    margin: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 20px;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .image-dialog::backdrop {
+    background: rgba(17, 24, 39, 0.76);
+  }
+
+  .dialog-inner {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 20px;
+    background: #111827;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+  }
+
+  .dialog-image {
+    display: block;
+    width: 100%;
+    max-height: calc(100vh - 32px);
+    object-fit: contain;
+    background: #111827;
+  }
+
+  .dialog-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    cursor: pointer;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #111827;
+    font-size: 1.5rem;
+    line-height: 1;
+    font-weight: 700;
+  }
+
+  .dialog-close:hover {
+    background: #fff;
+  }
+
+  .dialog-nav {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    transform: translateY(-50%);
+    cursor: pointer;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #111827;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+    transition:
+      background 0.2s ease,
+      transform 0.2s ease;
+  }
+
+  .dialog-nav:hover {
+    background: #fff;
+  }
+
+  .dialog-nav--prev {
+    left: 16px;
+  }
+
+  .dialog-nav--next {
+    right: 16px;
+  }
+
+  .dialog-nav-icon {
+    display: block;
+    width: 26px;
+    height: 26px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .empty-image {
+    display: grid;
+    place-items: center;
+    min-height: 360px;
+    border-radius: 20px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    color: #6b7280;
+    font-weight: 700;
+  }
+
+  @media (max-width: 640px) {
+    .main-image {
+      aspect-ratio: 4 / 3;
+    }
+
+    .zoom-label {
+      right: 10px;
+      bottom: 10px;
+      padding: 7px 10px;
+      font-size: 0.76rem;
+    }
+
+    .thumbnail-item {
+      flex-basis: 104px;
+    }
+
+    .image-dialog {
+      width: calc(100vw - 20px);
+      max-height: calc(100vh - 20px);
+    }
+
+    .dialog-image {
+      max-height: calc(100vh - 20px);
+    }
+
+    .dialog-close {
+      top: 8px;
+      right: 8px;
+      width: 36px;
+      height: 36px;
+    }
+
+    .dialog-nav {
+      width: 40px;
+      height: 40px;
+    }
+
+    .dialog-nav-icon {
+      width: 22px;
+      height: 22px;
+    }
+
+    .dialog-nav--prev {
+      left: 8px;
+    }
+
+    .dialog-nav--next {
+      right: 8px;
+    }
+  }
+</style>

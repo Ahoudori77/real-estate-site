@@ -1,0 +1,115 @@
+<header class="border-b border-slate-200 bg-white" data-site-header>
+  <div class="container flex min-h-20 items-center justify-between gap-6 py-4">
+    <a href="/" class="text-lg font-bold text-[var(--color-primary)]">
+      みやび共栄土地株式会社
+    </a>
+
+    <nav class="hidden gap-6 text-sm font-medium md:flex" aria-label="グローバルメニュー">
+      <a href="/">トップ</a>
+      <a href="/search">物件を探す</a>
+      <a href="/company">会社情報</a>
+      <a href="/contact">お問い合わせ</a>
+    </nav>
+
+    <div class="hidden items-center gap-4 md:flex">
+      <a
+        href="tel:000-0000-0000"
+        class="text-sm font-semibold text-[var(--color-primary)]"
+      >
+        TEL 000-0000-0000
+      </a>
+      <a href="/contact" class="btn btn-primary">お問い合わせ</a>
+    </div>
+
+    <button
+      type="button"
+      class="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold md:hidden"
+      aria-label="メニューを開く"
+      aria-expanded="false"
+      aria-controls="mobile-menu"
+      data-menu-button
+    >
+      MENU
+    </button>
+  </div>
+
+  <div
+    id="mobile-menu"
+    class="border-t border-slate-200 bg-white md:hidden"
+    data-mobile-menu
+    hidden
+  >
+    <nav class="container grid gap-1 py-4 text-sm font-medium" aria-label="スマートフォンメニュー">
+      <a href="/" class="mobile-menu-link">トップ</a>
+      <a href="/search" class="mobile-menu-link">物件を探す</a>
+      <a href="/company" class="mobile-menu-link">会社情報</a>
+      <a href="/contact" class="mobile-menu-link">お問い合わせ</a>
+
+      <div class="mt-3 border-t border-slate-200 pt-4">
+        <a
+          href="tel:000-0000-0000"
+          class="block text-sm font-semibold text-[var(--color-primary)]"
+        >
+          TEL 000-0000-0000
+        </a>
+        <a href="/contact" class="mt-3 inline-flex btn btn-primary">
+          お問い合わせ
+        </a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const headers = document.querySelectorAll("[data-site-header]");
+
+  headers.forEach((header) => {
+    const button = header.querySelector("[data-menu-button]");
+    const menu = header.querySelector("[data-mobile-menu]");
+
+    if (!(button instanceof HTMLButtonElement)) return;
+    if (!(menu instanceof HTMLElement)) return;
+
+    const setOpen = (isOpen) => {
+      menu.hidden = !isOpen;
+      button.setAttribute("aria-expanded", String(isOpen));
+      button.setAttribute(
+        "aria-label",
+        isOpen ? "メニューを閉じる" : "メニューを開く",
+      );
+      button.textContent = isOpen ? "CLOSE" : "MENU";
+    };
+
+    button.addEventListener("click", () => {
+      const isOpen = button.getAttribute("aria-expanded") === "true";
+      setOpen(!isOpen);
+    });
+
+    menu.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => {
+        setOpen(false);
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    });
+  });
+</script>
+
+<style>
+  .mobile-menu-link {
+    display: block;
+    border-radius: 14px;
+    padding: 12px 14px;
+    color: #111827;
+    text-decoration: none;
+  }
+
+  .mobile-menu-link:hover {
+    background: #f9fafb;
+    color: var(--color-primary);
+  }
+</style>

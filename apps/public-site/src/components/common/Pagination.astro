@@ -1,0 +1,93 @@
+---
+import {
+  buildPropertiesHref,
+  normalizePropertySearchParams,
+} from "../../lib/search/query";
+import type { PropertySearchParams } from "../../types/search";
+
+interface Props {
+  currentPage: number;
+  totalPages: number;
+  params?: PropertySearchParams;
+}
+
+const { currentPage, totalPages, params = {} } = Astro.props;
+const normalizedParams = normalizePropertySearchParams(params);
+
+const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+
+const buildHref = (page: number) =>
+  buildPropertiesHref({
+    ...normalizedParams,
+    page,
+  });
+---
+
+{totalPages > 1 && (
+  <nav class="pagination" aria-label="ページネーション">
+    {currentPage > 1 ? (
+      <a href={buildHref(currentPage - 1)} class="page-link">前へ</a>
+    ) : (
+      <span class="page-link disabled">前へ</span>
+    )}
+
+    <div class="page-numbers">
+      {pageNumbers.map((pageNumber) =>
+        pageNumber === currentPage ? (
+          <span class="page-link active">{pageNumber}</span>
+        ) : (
+          <a href={buildHref(pageNumber)} class="page-link">{pageNumber}</a>
+        ),
+      )}
+    </div>
+
+    {currentPage < totalPages ? (
+      <a href={buildHref(currentPage + 1)} class="page-link">次へ</a>
+    ) : (
+      <span class="page-link disabled">次へ</span>
+    )}
+  </nav>
+)}
+
+<style>
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .page-numbers {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #fff;
+    color: #111827;
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  .page-link.active {
+    background: #111827;
+    border-color: #111827;
+    color: #fff;
+  }
+
+  .page-link.disabled {
+    color: #9ca3af;
+    background: #f9fafb;
+    pointer-events: none;
+  }
+</style>

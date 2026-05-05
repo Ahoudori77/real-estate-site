@@ -1,0 +1,336 @@
+---
+import type { PropertyListItem } from "../../types/property";
+import {
+  formatAddress,
+  formatArea,
+  formatJapaneseDate,
+  formatPriceToManYen,
+  formatPropertyTypeLabel,
+} from "../../lib/utils/format";
+
+interface Props {
+  items: PropertyListItem[];
+}
+
+const { items } = Astro.props;
+---
+
+<section class="related-properties" aria-labelledby="related-properties-title">
+  <div class="related-header">
+    <p class="related-eyebrow">RELATED PROPERTIES</p>
+    <h2 id="related-properties-title">関連物件</h2>
+    <p class="related-lead">
+      あわせてご覧いただきたい土地・戸建てをご紹介します。
+    </p>
+  </div>
+
+  {items.length > 0 ? (
+    <div class="related-grid">
+      {items.map((property) => (
+        <article class="related-card">
+          <a href={`/properties/${property.slug}`} class="related-image-link">
+            {property.thumbnailUrl ? (
+              <img
+                src={property.thumbnailUrl}
+                alt={property.title}
+                class="related-thumbnail"
+                loading="lazy"
+              />
+            ) : (
+              <div class="related-thumbnail related-thumbnail--placeholder">
+                No Image
+              </div>
+            )}
+          </a>
+
+          <div class="related-content">
+            <div class="related-top">
+              <span class="related-type-badge">
+                {formatPropertyTypeLabel(property.type)}
+              </span>
+              <span class="related-updated-at">
+                更新日: {formatJapaneseDate(property.updatedAt)}
+              </span>
+            </div>
+
+            <h3 class="related-title">
+              <a href={`/properties/${property.slug}`}>{property.title}</a>
+            </h3>
+
+            <p class="related-price">
+              {formatPriceToManYen(property.price)}
+            </p>
+
+            <dl class="related-meta">
+              <div>
+                <dt>所在地</dt>
+                <dd>
+                  {formatAddress({
+                    prefecture: property.prefecture,
+                    city: property.city,
+                    address1: property.address1,
+                  })}
+                </dd>
+              </div>
+
+              <div>
+                <dt>土地面積</dt>
+                <dd>{formatArea(property.landAreaSqm)}</dd>
+              </div>
+
+              {property.type === "house" && (
+                <>
+                  <div>
+                    <dt>建物面積</dt>
+                    <dd>{formatArea(property.buildingAreaSqm)}</dd>
+                  </div>
+                  <div>
+                    <dt>間取り</dt>
+                    <dd>{property.floorPlan ?? "-"}</dd>
+                  </div>
+                </>
+              )}
+            </dl>
+
+            <div class="related-actions">
+              <a href={`/properties/${property.slug}`} class="related-detail-link">
+                詳細を見る
+              </a>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  ) : (
+    <div class="related-empty">
+      <p>現在、関連物件はありません。</p>
+    </div>
+  )}
+</section>
+
+<style>
+  .related-properties {
+    display: grid;
+    gap: 28px;
+  }
+
+  .related-header {
+    max-width: 720px;
+  }
+
+  .related-eyebrow {
+    margin: 0 0 8px;
+    color: var(--color-accent);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+  }
+
+  .related-header h2 {
+    margin: 0 0 10px;
+    color: var(--color-text);
+    font-size: clamp(28px, 3vw, 36px);
+    line-height: 1.3;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+  }
+
+  .related-lead {
+    margin: 0;
+    color: var(--color-muted);
+    line-height: 1.8;
+    font-weight: 700;
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+
+  .related-card {
+    overflow: hidden;
+    border: 1px solid rgba(233, 71, 46, 0.14);
+    border-radius: 22px;
+    background: #ffffff;
+    box-shadow: 0 14px 36px rgba(46, 10, 5, 0.08);
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .related-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(233, 71, 46, 0.28);
+    box-shadow: 0 18px 42px rgba(46, 10, 5, 0.12);
+  }
+
+  .related-image-link {
+    display: block;
+    background: #f4f4f4;
+  }
+
+  .related-thumbnail {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+  }
+
+  .related-thumbnail--placeholder {
+    display: grid;
+    place-items: center;
+    color: var(--color-muted);
+    font-weight: 700;
+  }
+
+  .related-content {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+  }
+
+  .related-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .related-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 8px 18px rgba(233, 71, 46, 0.14);
+  }
+
+  .related-updated-at {
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .related-title {
+    margin: 0;
+    font-size: 24px;
+    line-height: 1.4;
+    font-weight: 900;
+  }
+
+  .related-title a {
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .related-price {
+    margin: 0;
+    color: var(--color-accent-dark);
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.3;
+  }
+
+  .related-meta {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+  }
+
+  .related-meta div {
+    display: grid;
+    grid-template-columns: 76px 1fr;
+    gap: 10px;
+  }
+
+  .related-meta dt {
+    color: var(--color-muted);
+    font-weight: 800;
+  }
+
+  .related-meta dd {
+    margin: 0;
+    color: var(--color-text);
+    font-weight: 700;
+  }
+
+  .related-actions {
+    margin-top: 4px;
+  }
+
+  .related-detail-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: linear-gradient(
+      135deg,
+      var(--color-accent) 0%,
+      var(--color-accent-strong) 100%
+    );
+    color: #fff;
+    font-size: 14px;
+    font-weight: 900;
+    text-decoration: none;
+    box-shadow: 0 10px 20px rgba(233, 71, 46, 0.16);
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      opacity 0.2s ease;
+  }
+
+  .related-detail-link:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 24px rgba(233, 71, 46, 0.22);
+    opacity: 0.98;
+  }
+
+  .related-empty {
+    padding: 28px 24px;
+    border: 1px dashed rgba(233, 71, 46, 0.24);
+    border-radius: 18px;
+    background: #fff;
+    text-align: center;
+  }
+
+  .related-empty p {
+    margin: 0;
+    color: var(--color-muted);
+    font-weight: 700;
+  }
+
+  @media (max-width: 1024px) {
+    .related-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 640px) {
+    .related-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .related-title {
+      font-size: 21px;
+    }
+
+    .related-content {
+      padding: 16px;
+    }
+
+    .related-meta div {
+      grid-template-columns: 72px 1fr;
+    }
+  }
+</style>

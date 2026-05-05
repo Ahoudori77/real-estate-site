@@ -1,0 +1,157 @@
+---
+import SectionTitle from "../common/SectionTitle.astro";
+import PropertyCard from "../property/PropertyCard.astro";
+import { getProperties } from "../../lib/api/properties";
+
+const featuredResult = await getProperties({
+  sort: "newest",
+  page: 1,
+  pageSize: 3,
+});
+
+const featuredProperties = featuredResult.items;
+---
+
+<section class="featured-properties-section section section--cool section-divider">
+  <div class="container">
+    <div class="featured-header">
+      <SectionTitle
+        title="おすすめ物件"
+        lead="京都北部・周辺エリアでご紹介中の土地・戸建てをご覧いただけます。"
+      />
+    </div>
+
+    {featuredProperties.length > 0 ? (
+      <div class="grid-3 featured-property-grid">
+        {featuredProperties.map((property) => (
+          <PropertyCard property={property} />
+        ))}
+      </div>
+    ) : (
+      <div class="featured-empty">
+        <p>現在、掲載中のおすすめ物件はありません。</p>
+      </div>
+    )}
+
+    <div class="featured-actions">
+      <a href="/properties" class="btn btn-primary">物件一覧を見る</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .featured-header {
+    max-width: 760px;
+  }
+
+  .featured-property-grid {
+    align-items: stretch;
+  }
+
+  .featured-property-grid :global(.property-card) {
+    grid-template-columns: 1fr;
+    background: rgba(255, 255, 255, 0.96);
+    border-color: rgba(138, 31, 15, 0.12);
+    box-shadow: 0 16px 40px rgba(46, 10, 5, 0.08);
+    backdrop-filter: blur(6px);
+  }
+
+  .featured-property-grid :global(.thumbnail) {
+    min-height: 220px;
+    max-height: 260px;
+  }
+
+  .featured-property-grid :global(.content) {
+    padding: 18px;
+  }
+
+  .featured-property-grid :global(.top-row) {
+    align-items: flex-start;
+  }
+
+  .featured-property-grid :global(.title) {
+    font-size: 20px;
+  }
+
+  .featured-property-grid :global(.price) {
+    color: var(--color-accent);
+    font-size: 26px;
+  }
+
+  .featured-property-grid :global(.meta-list div) {
+    grid-template-columns: 78px 1fr;
+  }
+
+  .featured-property-grid :global(.type-badge) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--color-accent-pale);
+    color: var(--color-accent-dark);
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .featured-property-grid :global(.detail-link) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    min-height: 34px;
+    margin-top: 14px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 900;
+    text-decoration: none;
+    box-shadow: 0 8px 18px rgba(231, 52, 24, 0.16);
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      opacity 0.2s ease;
+  }
+
+  .featured-property-grid :global(.detail-link:hover) {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(231, 52, 24, 0.22);
+    opacity: 0.98;
+  }
+
+  .featured-empty {
+    padding: 32px 24px;
+    border: 1px dashed var(--color-border);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.88);
+    text-align: center;
+    box-shadow: var(--shadow-soft);
+    backdrop-filter: blur(6px);
+  }
+
+  .featured-empty p {
+    margin: 0;
+    color: var(--color-muted);
+    font-weight: 800;
+  }
+
+  .featured-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 32px;
+  }
+
+  @media (max-width: 640px) {
+    .featured-property-grid :global(.title) {
+      font-size: 18px;
+    }
+
+    .featured-property-grid :global(.price) {
+      font-size: 24px;
+    }
+  }
+</style>

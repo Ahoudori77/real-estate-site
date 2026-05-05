@@ -1,0 +1,194 @@
+---
+export const prerender = false;
+
+import AdminLayout from "../../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout
+  title="新規物件作成"
+  description="最低限の情報を入力して新しい物件を作成します。作成後は詳細編集画面へ移動します。"
+  currentSection="properties"
+>
+  <section class="admin-section">
+    <div class="admin-section__panel">
+      <form id="admin-property-create-form" class="admin-form" novalidate>
+        <div class="admin-form__actions">
+          <a href="/admin/properties" class="admin-button admin-button--secondary">一覧へ戻る</a>
+          <button type="submit" class="admin-button" data-admin-create-button>作成する</button>
+        </div>
+
+        <p class="admin-card__text" data-admin-create-message></p>
+
+        <div class="admin-form-grid">
+          <div class="admin-form-field">
+            <label>slug</label>
+            <input type="text" name="slug" placeholder="hyogo-amagasaki-new-house-01" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>状態</label>
+            <select name="status">
+              <option value="draft">draft</option>
+              <option value="published">published</option>
+              <option value="archived">archived</option>
+            </select>
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>物件名</label>
+            <input type="text" name="title" placeholder="尼崎市新規サンプル戸建て" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>物件種別</label>
+            <select name="propertyType">
+              <option value="house">house</option>
+              <option value="land">land</option>
+            </select>
+          </div>
+
+          <div class="admin-form-field">
+            <label>取引種別</label>
+            <select name="transactionType">
+              <option value="sale">sale</option>
+            </select>
+          </div>
+
+          <div class="admin-form-field">
+            <label>都道府県</label>
+            <input type="text" name="prefecture" value="兵庫県" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>市区町村</label>
+            <input type="text" name="city" placeholder="尼崎市" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>住所</label>
+            <input type="text" name="address" placeholder="サンプル町1-2-3" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>価格</label>
+            <input type="number" name="price" value="0" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>土地面積（㎡）</label>
+            <input type="number" step="0.01" name="landAreaSqm" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>建物面積（㎡）</label>
+            <input type="number" step="0.01" name="buildingAreaSqm" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>間取り</label>
+            <input type="text" name="layout" placeholder="3LDK" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>築年</label>
+            <input type="number" name="builtYear" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>築月</label>
+            <input type="number" name="builtMonth" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>アクセス情報</label>
+            <input type="text" name="accessInfo" placeholder="阪急〇〇駅 徒歩10分" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>説明文</label>
+            <textarea rows="6" name="description" placeholder="物件の説明文を入力してください。"></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  import { createProperty } from "../../../lib/admin/properties";
+
+  const form = document.getElementById("admin-property-create-form");
+  const messageBox = form?.querySelector("[data-admin-create-message]");
+  const createButton = form?.querySelector("[data-admin-create-button]");
+  const slugInput = form?.querySelector('input[name="slug"]');
+
+  const normalizeSlug = (value) =>
+    String(value)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  const toNullableNumber = (value) => {
+    if (value === "" || value === null || value === undefined) return null;
+    const num = Number(value);
+    return Number.isNaN(num) ? null : num;
+  };
+
+  if (slugInput instanceof HTMLInputElement) {
+    slugInput.addEventListener("blur", () => {
+      slugInput.value = normalizeSlug(slugInput.value);
+    });
+  }
+
+  if (
+    form instanceof HTMLFormElement &&
+    messageBox instanceof HTMLParagraphElement &&
+    createButton instanceof HTMLButtonElement
+  ) {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      messageBox.textContent = "";
+      messageBox.className = "admin-card__text";
+
+      createButton.disabled = true;
+      createButton.textContent = "作成中...";
+
+      const formData = new FormData(form);
+
+      const payload = {
+        slug: normalizeSlug(formData.get("slug") ?? ""),
+        title: String(formData.get("title") ?? "").trim(),
+        propertyType: String(formData.get("propertyType") ?? "house"),
+        transactionType: String(formData.get("transactionType") ?? "sale"),
+        prefecture: String(formData.get("prefecture") ?? "").trim(),
+        city: String(formData.get("city") ?? "").trim(),
+        address: String(formData.get("address") ?? "").trim(),
+        price: Number(formData.get("price") ?? 0),
+        landAreaSqm: toNullableNumber(formData.get("landAreaSqm")),
+        buildingAreaSqm: toNullableNumber(formData.get("buildingAreaSqm")),
+        layout: String(formData.get("layout") ?? "").trim() || null,
+        description: String(formData.get("description") ?? "").trim(),
+        accessInfo: String(formData.get("accessInfo") ?? "").trim() || null,
+        builtYear: toNullableNumber(formData.get("builtYear")),
+        builtMonth: toNullableNumber(formData.get("builtMonth")),
+        status: String(formData.get("status") ?? "draft"),
+      };
+
+      try {
+        const result = await createProperty(payload);
+        const slug = typeof result.slug === "string" && result.slug ? result.slug : payload.slug;
+
+        window.location.href = `/admin/properties/${encodeURIComponent(slug)}`;
+      } catch (error) {
+        messageBox.textContent =
+          error instanceof Error ? error.message : "物件の作成に失敗しました。";
+        messageBox.className = "admin-error";
+
+        createButton.disabled = false;
+        createButton.textContent = "作成する";
+      }
+    });
+  }
+</script>

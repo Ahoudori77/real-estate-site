@@ -1,0 +1,22 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import HeroSection from "../components/top/HeroSection.astro";
+import QuickSearchSection from "../components/top/QuickSearchSection.astro";
+import FeaturedPropertiesSection from "../components/top/FeaturedPropertiesSection.astro";
+// import AreaCoverageSection from "../components/top/AreaCoverageSection.astro";
+import StrengthSection from "../components/top/StrengthSection.astro";
+import FlowSection from "../components/top/FlowSection.astro";
+import ContactCta from "../components/layout/ContactCta.astro";
+---
+
+<BaseLayout
+  title="トップページ | みやび共栄土地株式会社"
+  description="京都北部・周辺エリアの土地・戸建て売買サイト。京丹後市、伊根町、与謝野町、宮津市、舞鶴市、綾部市、福知山市、丹波市、朝来市、養父市、豊岡市で物件をお探しいただけます。"
+>
+  <HeroSection />
+  <QuickSearchSection />
+  <FeaturedPropertiesSection />
+  <StrengthSection />
+  <FlowSection />
+  <ContactCta />
+</BaseLayout>

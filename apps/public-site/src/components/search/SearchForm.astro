@@ -1,0 +1,387 @@
+---
+import { areaOptions, featureOptions } from "../../data/mock/areas";
+import { normalizePropertySearchParams } from "../../lib/search/query";
+import type { PropertySearchParams } from "../../types/search";
+
+interface Props {
+  initialValues?: PropertySearchParams;
+}
+
+const { initialValues = {} } = Astro.props;
+const values = normalizePropertySearchParams(initialValues);
+
+const selectedType = values.type ?? "";
+const selectedPrefecture = values.prefecture ?? "";
+const selectedCity = values.city ?? "";
+const selectedFeatures = values.features ?? [];
+
+const citiesForSelectedPrefecture =
+  areaOptions.find((area) => area.prefecture === selectedPrefecture)?.cities ?? [];
+
+const areaMap = Object.fromEntries(
+  areaOptions.map((area) => [area.prefecture, area.cities]),
+);
+---
+
+<form action="/properties" method="get" class="search-form" id="property-search-form">
+  <div class="form-grid">
+    <div class="form-group">
+      <label for="type">物件種別</label>
+      <select id="type" name="type">
+        <option value="">すべて</option>
+        <option value="land" selected={selectedType === "land"}>土地</option>
+        <option value="house" selected={selectedType === "house"}>戸建て</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="prefecture">都道府県</label>
+      <select id="prefecture" name="prefecture">
+        <option value="">選択してください</option>
+        {areaOptions.map((area) => (
+          <option
+            value={area.prefecture}
+            selected={selectedPrefecture === area.prefecture}
+          >
+            {area.prefecture}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="city">市区町村</label>
+      <select id="city" name="city">
+        <option value="">選択してください</option>
+        {citiesForSelectedPrefecture.map((city) => (
+          <option value={city} selected={selectedCity === city}>
+            {city}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="priceMin">価格（下限）</label>
+      <input
+        id="priceMin"
+        name="priceMin"
+        type="number"
+        inputmode="numeric"
+        min="0"
+        step="1"
+        value={values.priceMin ?? ""}
+        placeholder="例: 20000000"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="priceMax">価格（上限）</label>
+      <input
+        id="priceMax"
+        name="priceMax"
+        type="number"
+        inputmode="numeric"
+        min="0"
+        step="1"
+        value={values.priceMax ?? ""}
+        placeholder="例: 50000000"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="landAreaMin">土地面積（下限㎡）</label>
+      <input
+        id="landAreaMin"
+        name="landAreaMin"
+        type="number"
+        inputmode="decimal"
+        min="0"
+        step="0.01"
+        value={values.landAreaMin ?? ""}
+        placeholder="例: 80"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="landAreaMax">土地面積（上限㎡）</label>
+      <input
+        id="landAreaMax"
+        name="landAreaMax"
+        type="number"
+        inputmode="decimal"
+        min="0"
+        step="0.01"
+        value={values.landAreaMax ?? ""}
+        placeholder="例: 150"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="buildingAreaMin">建物面積（下限㎡）</label>
+      <input
+        id="buildingAreaMin"
+        name="buildingAreaMin"
+        type="number"
+        inputmode="decimal"
+        min="0"
+        step="0.01"
+        value={values.buildingAreaMin ?? ""}
+        placeholder="例: 70"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="buildingAreaMax">建物面積（上限㎡）</label>
+      <input
+        id="buildingAreaMax"
+        name="buildingAreaMax"
+        type="number"
+        inputmode="decimal"
+        min="0"
+        step="0.01"
+        value={values.buildingAreaMax ?? ""}
+        placeholder="例: 120"
+      />
+    </div>
+
+    <div class="form-group">
+      <label for="floorPlan">間取り</label>
+      <input
+        id="floorPlan"
+        name="floorPlan"
+        type="text"
+        value={values.floorPlan ?? ""}
+        placeholder="例: 3LDK"
+      />
+    </div>
+  </div>
+
+  <fieldset class="feature-group">
+    <legend>こだわり条件</legend>
+    <div class="feature-options">
+      {featureOptions.map((feature) => (
+        <label class="feature-option">
+          <input
+            type="checkbox"
+            name="features"
+            value={feature}
+            checked={selectedFeatures.includes(feature)}
+          />
+          <span>{feature}</span>
+        </label>
+      ))}
+    </div>
+  </fieldset>
+
+  <div class="actions">
+    <button type="submit" class="btn btn-primary">検索する</button>
+    <a href="/search" class="btn btn-secondary">条件をクリア</a>
+  </div>
+</form>
+
+<script define:vars={{ areaMap }}>
+  const form = document.getElementById("property-search-form");
+
+  if (form instanceof HTMLFormElement) {
+    const params = new URLSearchParams(window.location.search);
+
+    const typeSelect = form.querySelector("#type");
+    const prefectureSelect = form.querySelector("#prefecture");
+    const citySelect = form.querySelector("#city");
+
+    const updateCityOptions = (prefectureValue, cityValue = "") => {
+      if (!(citySelect instanceof HTMLSelectElement)) return;
+
+      const cities = areaMap[prefectureValue] ?? [];
+      citySelect.innerHTML = "";
+
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = "選択してください";
+      citySelect.appendChild(defaultOption);
+
+      cities.forEach((city) => {
+        const option = document.createElement("option");
+        option.value = city;
+        option.textContent = city;
+        option.selected = city === cityValue;
+        citySelect.appendChild(option);
+      });
+
+      if (!cities.includes(cityValue)) {
+        citySelect.value = "";
+      }
+    };
+
+    const setValue = (selector, value) => {
+      const element = form.querySelector(selector);
+      if (
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLSelectElement ||
+        element instanceof HTMLTextAreaElement
+      ) {
+        element.value = value ?? "";
+      }
+    };
+
+    const selectedType = params.get("type") ?? "";
+    const selectedPrefecture = params.get("prefecture") ?? "";
+    const selectedCity = params.get("city") ?? "";
+
+    if (typeSelect instanceof HTMLSelectElement) {
+      typeSelect.value = selectedType;
+    }
+
+    if (prefectureSelect instanceof HTMLSelectElement) {
+      prefectureSelect.value = selectedPrefecture;
+    }
+
+    updateCityOptions(selectedPrefecture, selectedCity);
+
+    setValue("#priceMin", params.get("priceMin") ?? "");
+    setValue("#priceMax", params.get("priceMax") ?? "");
+    setValue("#landAreaMin", params.get("landAreaMin") ?? "");
+    setValue("#landAreaMax", params.get("landAreaMax") ?? "");
+    setValue("#buildingAreaMin", params.get("buildingAreaMin") ?? "");
+    setValue("#buildingAreaMax", params.get("buildingAreaMax") ?? "");
+    setValue("#floorPlan", params.get("floorPlan") ?? "");
+
+    const featureValues = params
+      .getAll("features")
+      .flatMap((value) => value.split(","))
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    form
+      .querySelectorAll('input[name="features"]')
+      .forEach((checkbox) => {
+        if (checkbox instanceof HTMLInputElement) {
+          checkbox.checked = featureValues.includes(checkbox.value);
+        }
+      });
+
+    if (prefectureSelect instanceof HTMLSelectElement) {
+      prefectureSelect.addEventListener("change", () => {
+        updateCityOptions(prefectureSelect.value, "");
+      });
+    }
+  }
+</script>
+
+<style>
+  .search-form {
+    display: grid;
+    gap: 24px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .form-group {
+    display: grid;
+    gap: 8px;
+  }
+
+  .form-group label,
+  .feature-group legend {
+    font-weight: 700;
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    border: 1px solid var(--color-border, #eadbd5);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    background: #fff;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus {
+    outline: 3px solid var(--color-accent-soft, #fff1ed);
+    border-color: var(--color-accent, #ff6347);
+  }
+
+  .feature-group {
+    border: 1px solid var(--color-border, #eadbd5);
+    border-radius: 16px;
+    padding: 18px;
+    background: #fffaf7;
+  }
+
+  .feature-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .feature-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border, #eadbd5);
+    border-radius: 999px;
+    background: #fff;
+    font-weight: 700;
+    transition: 0.2s ease;
+  }
+
+  .feature-option:hover {
+    border-color: var(--color-accent, #ff6347);
+    background: var(--color-accent-soft, #fff1ed);
+    color: var(--color-accent-dark, #d94832);
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+    padding: 12px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  .btn-primary {
+    background: var(--color-accent, #ff6347);
+    color: #fff;
+    border: 1px solid var(--color-accent, #ff6347);
+    box-shadow: 0 10px 20px rgba(255, 99, 71, 0.18);
+  }
+
+  .btn-primary:hover {
+    background: var(--color-accent-dark, #d94832);
+    border-color: var(--color-accent-dark, #d94832);
+  }
+
+  .btn-secondary {
+    background: #fff;
+    color: var(--color-accent-dark, #d94832);
+    border: 1px solid var(--color-border, #eadbd5);
+  }
+
+  .btn-secondary:hover {
+    background: var(--color-accent-soft, #fff1ed);
+    border-color: var(--color-accent, #ff6347);
+  }
+
+  @media (max-width: 768px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

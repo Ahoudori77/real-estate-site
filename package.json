@@ -1,0 +1,10 @@
+{
+  "name": "real-estate-site",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "dev:public": "pnpm --filter public-site dev",
+    "build:public": "pnpm --filter public-site build",
+    "preview:public": "pnpm --filter public-site preview"
+  }
+}

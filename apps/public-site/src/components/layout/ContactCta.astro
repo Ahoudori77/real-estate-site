@@ -1,0 +1,176 @@
+---
+const contactHref = "/contact";
+---
+
+<section
+  class="contact-cta section section--accent-soft"
+  aria-labelledby="contact-cta-title"
+>
+  <div class="contact-cta__inner">
+    <div class="contact-cta__content">
+      <p class="contact-cta__eyebrow">CONTACT</p>
+
+      <h2 id="contact-cta-title" class="contact-cta__title">
+        物件探し・売却のご相談は<br class="sp-only" />
+        お気軽にお問い合わせください
+      </h2>
+
+      <p class="contact-cta__text">
+        京都北部・丹波・但馬エリアを中心に、土地・戸建てのご相談を承っています。
+        気になる物件のこと、売却のこと、まずは小さなご相談からでも大丈夫です。
+      </p>
+    </div>
+
+    <div class="contact-cta__action">
+      <a href={contactHref} class="contact-cta__button">
+        お問い合わせする
+        <span class="contact-cta__button-arrow" aria-hidden="true">→</span>
+      </a>
+
+      <p class="contact-cta__note">
+        内容を確認後、担当者よりご連絡いたします。
+      </p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .contact-cta {
+    padding-inline: 24px;
+  }
+
+  .contact-cta__inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 48px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 40px;
+    align-items: center;
+    border: 1px solid rgba(138, 31, 15, 0.14);
+    border-radius: 28px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 24px 60px rgba(46, 10, 5, 0.08);
+    backdrop-filter: blur(10px);
+  }
+
+  .contact-cta__eyebrow {
+    margin: 0 0 14px;
+    color: var(--color-accent);
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+  }
+
+  .contact-cta__title {
+    margin: 0;
+    color: var(--color-text);
+    font-size: clamp(1.8rem, 3vw, 2.55rem);
+    line-height: 1.45;
+    letter-spacing: 0.04em;
+  }
+
+  .contact-cta__text {
+    margin: 22px 0 0;
+    max-width: 720px;
+    color: var(--color-muted);
+    font-size: 1rem;
+    line-height: 2;
+  }
+
+  .contact-cta__action {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .contact-cta__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 60px;
+    padding: 0 28px;
+    border-radius: 999px;
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-strong) 100%);
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    box-shadow: 0 14px 28px rgba(231, 52, 24, 0.22);
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      opacity 0.2s ease;
+  }
+
+  .contact-cta__button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 36px rgba(231, 52, 24, 0.28);
+    opacity: 0.96;
+  }
+
+  .contact-cta__button-arrow {
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .contact-cta__note {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 0.86rem;
+    line-height: 1.75;
+    text-align: center;
+  }
+
+  .sp-only {
+    display: none;
+  }
+
+  @media (max-width: 820px) {
+    .contact-cta {
+      padding-inline: 18px;
+    }
+
+    .contact-cta__inner {
+      grid-template-columns: 1fr;
+      padding: 34px 24px;
+      gap: 30px;
+      border-radius: 22px;
+      text-align: left;
+    }
+
+    .contact-cta__action {
+      align-items: stretch;
+    }
+
+    .contact-cta__button {
+      width: 100%;
+    }
+
+    .contact-cta__note {
+      text-align: left;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .contact-cta__inner {
+      padding: 30px 20px;
+    }
+
+    .contact-cta__title {
+      font-size: 1.55rem;
+    }
+
+    .contact-cta__text {
+      font-size: 0.95rem;
+      line-height: 1.9;
+    }
+
+    .sp-only {
+      display: block;
+    }
+  }
+</style>

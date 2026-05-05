@@ -1,0 +1,14 @@
+---
+interface Props {
+  title: string;
+  lead?: string;
+  center?: boolean;
+}
+
+const { title, lead, center = false } = Astro.props;
+---
+
+<div class={center ? "text-center" : ""}>
+  <h2 class="section-title">{title}</h2>
+  {lead && <p class="section-lead">{lead}</p>}
+</div>
