@@ -1,27 +1,21 @@
 import type { APIRoute } from "astro";
+import { env } from "cloudflare:workers";
 
 export const prerender = false;
 
-type CloudflareRuntime = {
-  env?: {
-    AZURE_FUNCTIONS_BASE_URL?: string;
-    AZURE_FUNCTIONS_MANAGEMENT_KEY?: string;
-  };
+type WorkerEnv = {
+  AZURE_FUNCTIONS_BASE_URL?: string;
+  AZURE_FUNCTIONS_MANAGEMENT_KEY?: string;
 };
 
-function getEnv(locals: App.Locals): CloudflareRuntime["env"] {
-  return (locals as App.Locals & { runtime?: CloudflareRuntime }).runtime?.env;
-}
+const workerEnv = env as WorkerEnv;
 
 async function proxyToManagementApi({
   params,
   request,
-  locals,
 }: Parameters<APIRoute>[0]): Promise<Response> {
-  const env = getEnv(locals);
-
-  const baseUrl = env?.AZURE_FUNCTIONS_BASE_URL;
-  const managementKey = env?.AZURE_FUNCTIONS_MANAGEMENT_KEY;
+  const baseUrl = workerEnv.AZURE_FUNCTIONS_BASE_URL;
+  const managementKey = workerEnv.AZURE_FUNCTIONS_MANAGEMENT_KEY;
 
   if (!baseUrl) {
     return json({ ok: false, error: "AZURE_FUNCTIONS_BASE_URL is not set" }, 500);
