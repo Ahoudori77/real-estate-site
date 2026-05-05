@@ -43,8 +43,7 @@ const slug = Astro.params.slug ?? "";
   };
 
   const buildAdminApiUrl = (path) => {
-    const baseUrl = import.meta.env.PUBLIC_API_BASE_URL ?? "";
-    return `${baseUrl}${path}`;
+    return path.startsWith("/") ? path : `/${path}`;
   };
 
   const requestJson = async (path, options = {}) => {
@@ -59,7 +58,7 @@ const slug = Astro.params.slug ?? "";
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
-      throw new Error(data?.message ?? "APIリクエストに失敗しました。");
+      throw new Error(data?.message ?? data?.error?.message ?? "APIリクエストに失敗しました。");
     }
 
     return data;
@@ -150,9 +149,9 @@ const slug = Astro.params.slug ?? "";
   const bindForm = () => {
     if (!root) return;
 
-    const form = root.querySelector('[data-admin-property-form]');
-    const messageBox = root.querySelector('[data-admin-form-message]');
-    const saveButton = root.querySelector('[data-admin-save-button]');
+    const form = root.querySelector("[data-admin-property-form]");
+    const messageBox = root.querySelector("[data-admin-form-message]");
+    const saveButton = root.querySelector("[data-admin-save-button]");
 
     if (!(form instanceof HTMLFormElement)) return;
     if (!(messageBox instanceof HTMLParagraphElement)) return;
@@ -163,11 +162,16 @@ const slug = Astro.params.slug ?? "";
 
       console.log("[admin property] submit fired");
 
+      if (!form.checkValidity()) {
+        form.reportValidity();
+
+        messageBox.textContent = "必須項目を入力してください。";
+        messageBox.className = "admin-error";
+        return;
+      }
+
       messageBox.textContent = "";
       messageBox.className = "admin-card__text";
-
-      saveButton.disabled = true;
-      saveButton.textContent = "保存中...";
 
       const formData = new FormData(form);
 
@@ -176,17 +180,17 @@ const slug = Astro.params.slug ?? "";
       ).map((input) => input.value);
 
       const payload = {
-        title: String(formData.get("title") ?? ""),
+        title: String(formData.get("title") ?? "").trim(),
         propertyType: String(formData.get("propertyType") ?? "house"),
         transactionType: String(formData.get("transactionType") ?? "sale"),
-        prefecture: String(formData.get("prefecture") ?? ""),
-        city: String(formData.get("city") ?? ""),
-        address: String(formData.get("address") ?? ""),
+        prefecture: String(formData.get("prefecture") ?? "").trim(),
+        city: String(formData.get("city") ?? "").trim(),
+        address: String(formData.get("address") ?? "").trim(),
         price: Number(formData.get("price") ?? 0),
         landAreaSqm: toNullableNumber(formData.get("landAreaSqm")),
         buildingAreaSqm: toNullableNumber(formData.get("buildingAreaSqm")),
         layout: String(formData.get("layout") ?? "").trim() || null,
-        description: String(formData.get("description") ?? ""),
+        description: String(formData.get("description") ?? "").trim(),
         accessInfo: String(formData.get("accessInfo") ?? "").trim() || null,
         builtYear: toNullableNumber(formData.get("builtYear")),
         builtMonth: toNullableNumber(formData.get("builtMonth")),
@@ -197,6 +201,27 @@ const slug = Astro.params.slug ?? "";
       console.log("[admin property] payload", payload);
 
       try {
+        const requiredFields = [
+          ["物件名", payload.title],
+          ["都道府県", payload.prefecture],
+          ["市区町村", payload.city],
+          ["住所", payload.address],
+          ["説明文", payload.description],
+        ];
+
+        const missingField = requiredFields.find(([, value]) => !value);
+
+        if (missingField) {
+          throw new Error(`${missingField[0]}を入力してください。`);
+        }
+
+        if (!Number.isInteger(payload.price) || payload.price < 0) {
+          throw new Error("価格は0以上の整数で入力してください。");
+        }
+
+        saveButton.disabled = true;
+        saveButton.textContent = "保存中...";
+
         const result = await updateProperty(slug, payload);
         console.log("[admin property] update success", result);
 
@@ -439,7 +464,7 @@ const slug = Astro.params.slug ?? "";
     const selectedFeatureIds = new Set(item.featureIds ?? []);
 
     root.innerHTML = `
-      <form class="admin-form" data-admin-property-form novalidate>
+      <form class="admin-form" data-admin-property-form>
         <div class="admin-form__actions">
           <a href="/admin/properties" class="admin-button admin-button--secondary">一覧へ戻る</a>
           <button type="submit" class="admin-button" data-admin-save-button>保存する</button>
@@ -457,7 +482,7 @@ const slug = Astro.params.slug ?? "";
 
           <div class="admin-form-field">
             <label>状態</label>
-            <select name="status">
+            <select name="status" required>
               <option value="draft" ${item.status === "draft" ? "selected" : ""}>draft</option>
               <option value="published" ${item.status === "published" ? "selected" : ""}>published</option>
               <option value="archived" ${item.status === "archived" ? "selected" : ""}>archived</option>
@@ -466,12 +491,12 @@ const slug = Astro.params.slug ?? "";
 
           <div class="admin-form-field admin-form-field--full">
             <label>物件名</label>
-            <input type="text" name="title" value="${inputValue(item.title)}" />
+            <input type="text" name="title" value="${inputValue(item.title)}" required />
           </div>
 
           <div class="admin-form-field">
             <label>物件種別</label>
-            <select name="propertyType">
+            <select name="propertyType" required>
               <option value="house" ${item.propertyType === "house" ? "selected" : ""}>house</option>
               <option value="land" ${item.propertyType === "land" ? "selected" : ""}>land</option>
             </select>
@@ -479,29 +504,29 @@ const slug = Astro.params.slug ?? "";
 
           <div class="admin-form-field">
             <label>取引種別</label>
-            <select name="transactionType">
+            <select name="transactionType" required>
               <option value="sale" ${item.transactionType === "sale" ? "selected" : ""}>sale</option>
             </select>
           </div>
 
           <div class="admin-form-field">
             <label>都道府県</label>
-            <input type="text" name="prefecture" value="${inputValue(item.prefecture)}" />
+            <input type="text" name="prefecture" value="${inputValue(item.prefecture)}" required />
           </div>
 
           <div class="admin-form-field">
             <label>市区町村</label>
-            <input type="text" name="city" value="${inputValue(item.city)}" />
+            <input type="text" name="city" value="${inputValue(item.city)}" required />
           </div>
 
           <div class="admin-form-field admin-form-field--full">
             <label>住所</label>
-            <input type="text" name="address" value="${inputValue(item.address)}" />
+            <input type="text" name="address" value="${inputValue(item.address)}" required />
           </div>
 
           <div class="admin-form-field">
             <label>価格</label>
-            <input type="number" name="price" value="${numberValue(item.price)}" />
+            <input type="number" name="price" value="${numberValue(item.price)}" min="0" step="1" required />
           </div>
 
           <div class="admin-form-field">
@@ -536,7 +561,7 @@ const slug = Astro.params.slug ?? "";
 
           <div class="admin-form-field admin-form-field--full">
             <label>説明文</label>
-            <textarea rows="6" name="description">${inputValue(item.description)}</textarea>
+            <textarea rows="6" name="description" required>${inputValue(item.description)}</textarea>
           </div>
         </div>
 
