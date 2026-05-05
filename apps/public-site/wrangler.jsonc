@@ -11,6 +11,9 @@
     "binding": "ASSETS",
     "directory": "./dist"
   },
+  "vars": {
+    "AZURE_FUNCTIONS_BASE_URL": "https://func-realestate-dev-01-b9g0fqcmeec6bvhy.japaneast-01.azurewebsites.net"
+  },
   "observability": {
     "enabled": true
   }
