@@ -6,7 +6,7 @@
     "nodejs_compat",
     "global_fetch_strictly_public"
   ],
-  "main": "dist/_worker.js/index.js",
+  "main": "@astrojs/cloudflare/entrypoints/server",
   "assets": {
     "binding": "ASSETS",
     "directory": "./dist"
