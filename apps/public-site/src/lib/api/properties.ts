@@ -1,4 +1,3 @@
-import { env } from "cloudflare:workers";
 import type {
   PropertyDetail,
   PropertyListItem,
@@ -54,21 +53,11 @@ const toBooleanValue = (value: unknown): boolean | undefined => {
   return undefined;
 };
 
-type WorkerEnv = {
-  AZURE_FUNCTIONS_BASE_URL?: string;
-  PUBLIC_API_BASE_URL?: string;
-};
-
-const workerEnv = env as WorkerEnv;
-
 const getApiBaseUrl = () => {
-  const baseUrl =
-    workerEnv.AZURE_FUNCTIONS_BASE_URL ??
-    workerEnv.PUBLIC_API_BASE_URL ??
-    import.meta.env.PUBLIC_API_BASE_URL;
+  const baseUrl = import.meta.env.PUBLIC_API_BASE_URL;
 
   if (!baseUrl) {
-    throw new Error("AZURE_FUNCTIONS_BASE_URL or PUBLIC_API_BASE_URL is not set.");
+    throw new Error("PUBLIC_API_BASE_URL is not set.");
   }
 
   return baseUrl.replace(/\/$/, "");
