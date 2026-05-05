@@ -5,14 +5,14 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 ---
 
 <AdminLayout
-  title="feature 管理"
-  description="feature の追加と編集を行う"
+  title="こだわり条件 管理"
+  description="こだわり条件の追加と編集を行う"
   currentSection="features"
 >
   <section class="admin-section">
     <div class="admin-section__panel">
       <div id="admin-features-root">
-        <p class="admin-loading">feature 一覧を読み込み中...</p>
+        <p class="admin-loading">こだわり条件一覧を読み込み中...</p>
       </div>
     </div>
   </section>
@@ -24,14 +24,70 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
   const root = document.getElementById("admin-features-root");
 
+  const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
   const renderError = (message) => {
     if (!root) return;
     root.innerHTML = `<p class="admin-error">${escapeHtml(message)}</p>`;
   };
 
+  const normalizeSlug = (value) =>
+    String(value)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
   const toSortOrder = (value) => {
+    if (value === "" || value === null || value === undefined) return 0;
+
     const num = Number(value);
-    return Number.isNaN(num) ? 0 : num;
+    return Number.isFinite(num) ? num : 0;
+  };
+
+  const validateFeaturePayload = (payload) => {
+    const requiredFields = [
+      ["識別子（slug）", payload.slug],
+      ["表示名", payload.name],
+      ["カテゴリ", payload.category],
+    ];
+
+    const missingField = requiredFields.find(([, value]) => !value);
+
+    if (missingField) {
+      throw new Error(`${missingField[0]}を入力してください。`);
+    }
+
+    if (!slugPattern.test(payload.slug)) {
+      throw new Error("識別子（slug）は英小文字・数字・ハイフンのみで入力してください。例: near-school");
+    }
+
+    if (!Number.isInteger(payload.sortOrder) || payload.sortOrder < 0) {
+      throw new Error("表示順は0以上の整数で入力してください。");
+    }
+  };
+
+  const buildPayloadFromForm = (form) => {
+    const formData = new FormData(form);
+
+    return {
+      slug: normalizeSlug(formData.get("slug") ?? ""),
+      name: String(formData.get("name") ?? "").trim(),
+      category: String(formData.get("category") ?? "").trim(),
+      sortOrder: toSortOrder(formData.get("sortOrder")),
+    };
+  };
+
+  const bindSlugInputs = () => {
+    if (!root) return;
+
+    root.querySelectorAll('input[name="slug"]').forEach((input) => {
+      if (!(input instanceof HTMLInputElement)) return;
+
+      input.addEventListener("blur", () => {
+        input.value = normalizeSlug(input.value);
+      });
+    });
   };
 
   const bindCreateForm = () => {
@@ -48,28 +104,32 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
+      if (!form.checkValidity()) {
+        form.reportValidity();
+
+        messageBox.textContent = "必須項目を入力してください。";
+        messageBox.className = "admin-error";
+        return;
+      }
+
       messageBox.textContent = "";
       messageBox.className = "admin-card__text";
 
-      button.disabled = true;
-      button.textContent = "追加中...";
-
-      const formData = new FormData(form);
-
-      const payload = {
-        slug: String(formData.get("slug") ?? "").trim(),
-        name: String(formData.get("name") ?? "").trim(),
-        category: String(formData.get("category") ?? "").trim(),
-        sortOrder: toSortOrder(formData.get("sortOrder")),
-      };
+      const payload = buildPayloadFromForm(form);
 
       try {
+        validateFeaturePayload(payload);
+
+        button.disabled = true;
+        button.textContent = "追加中...";
+
         await createFeature(payload);
-        await load("feature を追加しました。");
+        await load("こだわり条件を追加しました。");
       } catch (error) {
         messageBox.textContent =
-          error instanceof Error ? error.message : "feature の追加に失敗しました。";
+          error instanceof Error ? error.message : "こだわり条件の追加に失敗しました。";
         messageBox.className = "admin-error";
+
         button.disabled = false;
         button.textContent = "追加する";
       }
@@ -94,28 +154,32 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
 
+        if (!form.checkValidity()) {
+          form.reportValidity();
+
+          messageBox.textContent = "必須項目を入力してください。";
+          messageBox.className = "admin-error";
+          return;
+        }
+
         messageBox.textContent = "";
         messageBox.className = "admin-card__text";
 
-        saveButton.disabled = true;
-        saveButton.textContent = "保存中...";
-
-        const formData = new FormData(form);
-
-        const payload = {
-          slug: String(formData.get("slug") ?? "").trim(),
-          name: String(formData.get("name") ?? "").trim(),
-          category: String(formData.get("category") ?? "").trim(),
-          sortOrder: toSortOrder(formData.get("sortOrder")),
-        };
+        const payload = buildPayloadFromForm(form);
 
         try {
+          validateFeaturePayload(payload);
+
+          saveButton.disabled = true;
+          saveButton.textContent = "保存中...";
+
           await updateFeature(featureId, payload);
-          await load("feature を保存しました。");
+          await load("こだわり条件を保存しました。");
         } catch (error) {
           messageBox.textContent =
-            error instanceof Error ? error.message : "feature の更新に失敗しました。";
+            error instanceof Error ? error.message : "こだわり条件の更新に失敗しました。";
           messageBox.className = "admin-error";
+
           saveButton.disabled = false;
           saveButton.textContent = "保存する";
         }
@@ -139,7 +203,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       if (!(messageBox instanceof HTMLParagraphElement)) return;
 
       button.addEventListener("click", async () => {
-        const confirmed = window.confirm("この feature を削除しますか？");
+        const confirmed = window.confirm("このこだわり条件を削除しますか？");
         if (!confirmed) return;
 
         messageBox.textContent = "";
@@ -150,11 +214,12 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
         try {
           await deleteFeature(featureId);
-          await load("feature を削除しました。");
+          await load("こだわり条件を削除しました。");
         } catch (error) {
           messageBox.textContent =
-            error instanceof Error ? error.message : "feature の削除に失敗しました。";
+            error instanceof Error ? error.message : "こだわり条件の削除に失敗しました。";
           messageBox.className = "admin-error";
+
           button.disabled = false;
           button.textContent = "削除する";
         }
@@ -171,32 +236,39 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       </div>
 
       <div class="admin-section__panel" style="margin-top: 24px;">
-        <h2 class="admin-card__title">新規 feature 追加</h2>
+        <h2 class="admin-card__title">新規こだわり条件 追加</h2>
 
-        <form class="admin-form" data-admin-feature-create-form novalidate>
+        <form class="admin-form" data-admin-feature-create-form>
           <p class="${flashMessage ? "admin-success-text" : "admin-card__text"}" data-admin-feature-create-message>
             ${escapeHtml(flashMessage)}
           </p>
 
           <div class="admin-form-grid">
             <div class="admin-form-field">
-              <label>slug</label>
-              <input type="text" name="slug" placeholder="near-school" />
+              <label>識別子（slug）</label>
+              <input
+                type="text"
+                name="slug"
+                placeholder="near-school"
+                pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                title="英小文字・数字・ハイフンのみで入力してください。例: near-school"
+                required
+              />
             </div>
 
             <div class="admin-form-field">
-              <label>name</label>
-              <input type="text" name="name" placeholder="学校近く" />
+              <label>表示名</label>
+              <input type="text" name="name" placeholder="学校近く" required />
             </div>
 
             <div class="admin-form-field">
-              <label>category</label>
-              <input type="text" name="category" placeholder="amenity" />
+              <label>カテゴリ</label>
+              <input type="text" name="category" placeholder="amenity" required />
             </div>
 
             <div class="admin-form-field">
-              <label>sortOrder</label>
-              <input type="number" name="sortOrder" value="0" />
+              <label>表示順</label>
+              <input type="number" name="sortOrder" value="0" min="0" step="1" required />
             </div>
           </div>
 
@@ -207,7 +279,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       </div>
 
       <div class="admin-section__panel" style="margin-top: 24px;">
-        <h2 class="admin-card__title">既存 feature 一覧</h2>
+        <h2 class="admin-card__title">既存こだわり条件 一覧</h2>
 
         ${
           items.length
@@ -216,7 +288,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                 ${items
                   .map(
                     (item) => `
-                      <form class="admin-feature-card" data-admin-feature-edit-form data-feature-id="${escapeHtml(item.id)}" novalidate>
+                      <form class="admin-feature-card" data-admin-feature-edit-form data-feature-id="${escapeHtml(item.id)}">
                         <div class="admin-feature-card__header">
                           <div>
                             <div class="admin-feature-card__id">ID: ${escapeHtml(item.id)}</div>
@@ -239,23 +311,30 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
                         <div class="admin-form-grid">
                           <div class="admin-form-field">
-                            <label>slug</label>
-                            <input type="text" name="slug" value="${escapeHtml(item.slug)}" />
+                            <label>識別子（slug）</label>
+                            <input
+                              type="text"
+                              name="slug"
+                              value="${escapeHtml(item.slug)}"
+                              pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                              title="英小文字・数字・ハイフンのみで入力してください。例: near-school"
+                              required
+                            />
                           </div>
 
                           <div class="admin-form-field">
-                            <label>name</label>
-                            <input type="text" name="name" value="${escapeHtml(item.name)}" />
+                            <label>表示名</label>
+                            <input type="text" name="name" value="${escapeHtml(item.name)}" required />
                           </div>
 
                           <div class="admin-form-field">
-                            <label>category</label>
-                            <input type="text" name="category" value="${escapeHtml(item.category ?? "")}" />
+                            <label>カテゴリ</label>
+                            <input type="text" name="category" value="${escapeHtml(item.category ?? "")}" required />
                           </div>
 
                           <div class="admin-form-field">
-                            <label>sortOrder</label>
-                            <input type="number" name="sortOrder" value="${escapeHtml(item.sortOrder)}" />
+                            <label>表示順</label>
+                            <input type="number" name="sortOrder" value="${escapeHtml(item.sortOrder)}" min="0" step="1" required />
                           </div>
                         </div>
                       </form>
@@ -264,11 +343,12 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                   .join("")}
               </div>
             `
-            : '<p class="admin-empty">feature はまだ登録されていません。</p>'
+            : '<p class="admin-empty">こだわり条件はまだ登録されていません。</p>'
         }
       </div>
     `;
 
+    bindSlugInputs();
     bindCreateForm();
     bindEditForms();
     bindDeleteButtons();
@@ -280,7 +360,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       render(items, flashMessage);
     } catch (error) {
       console.error("[admin features] load failed", error);
-      renderError(error instanceof Error ? error.message : "feature 一覧の取得に失敗しました。");
+      renderError(error instanceof Error ? error.message : "こだわり条件一覧の取得に失敗しました。");
     }
   };
 

@@ -20,9 +20,13 @@ type ErrorResponse = {
   };
 };
 
+function buildAdminApiUrl(path: string): string {
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
 function resolveErrorMessage(data: FeatureMutationResponse | ErrorResponse | null): string {
   if (!data || typeof data !== "object") {
-    return "feature の保存に失敗しました。";
+    return "こだわり条件の保存に失敗しました。";
   }
 
   if ("error" in data && data.error?.message) {
@@ -33,20 +37,23 @@ function resolveErrorMessage(data: FeatureMutationResponse | ErrorResponse | nul
     return data.message;
   }
 
-  return "feature の保存に失敗しました。";
+  return "こだわり条件の保存に失敗しました。";
+}
+
+async function readResponseJson(
+  response: Response,
+): Promise<FeatureMutationResponse | ErrorResponse | null> {
+  try {
+    return (await response.json()) as FeatureMutationResponse | ErrorResponse;
+  } catch {
+    return null;
+  }
 }
 
 export async function createFeature(
   input: AdminFeatureInput,
-  apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL,
 ): Promise<FeatureMutationResponse> {
-  if (!apiBaseUrl) {
-    throw new Error("PUBLIC_API_BASE_URL is not set.");
-  }
-
-  const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, "");
-
-  const response = await fetch(`${normalizedApiBaseUrl}/api/management/features`, {
+  const response = await fetch(buildAdminApiUrl("/api/admin/features"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -54,13 +61,7 @@ export async function createFeature(
     body: JSON.stringify(input),
   });
 
-  let data: FeatureMutationResponse | ErrorResponse | null = null;
-
-  try {
-    data = await response.json();
-  } catch {
-    data = null;
-  }
+  const data = await readResponseJson(response);
 
   if (!response.ok) {
     throw new Error(resolveErrorMessage(data));
@@ -72,16 +73,9 @@ export async function createFeature(
 export async function updateFeature(
   id: string,
   input: AdminFeatureInput,
-  apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL,
 ): Promise<FeatureMutationResponse> {
-  if (!apiBaseUrl) {
-    throw new Error("PUBLIC_API_BASE_URL is not set.");
-  }
-
-  const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, "");
-
   const response = await fetch(
-    `${normalizedApiBaseUrl}/api/management/features/${encodeURIComponent(id)}`,
+    buildAdminApiUrl(`/api/admin/features/${encodeURIComponent(id)}`),
     {
       method: "PATCH",
       headers: {
@@ -91,13 +85,7 @@ export async function updateFeature(
     },
   );
 
-  let data: FeatureMutationResponse | ErrorResponse | null = null;
-
-  try {
-    data = await response.json();
-  } catch {
-    data = null;
-  }
+  const data = await readResponseJson(response);
 
   if (!response.ok) {
     throw new Error(resolveErrorMessage(data));
@@ -108,28 +96,15 @@ export async function updateFeature(
 
 export async function deleteFeature(
   id: string,
-  apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL,
 ): Promise<FeatureMutationResponse> {
-  if (!apiBaseUrl) {
-    throw new Error("PUBLIC_API_BASE_URL is not set.");
-  }
-
-  const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, "");
-
   const response = await fetch(
-    `${normalizedApiBaseUrl}/api/management/features/${encodeURIComponent(id)}`,
+    buildAdminApiUrl(`/api/admin/features/${encodeURIComponent(id)}`),
     {
       method: "DELETE",
     },
   );
 
-  let data: FeatureMutationResponse | ErrorResponse | null = null;
-
-  try {
-    data = await response.json();
-  } catch {
-    data = null;
-  }
+  const data = await readResponseJson(response);
 
   if (!response.ok) {
     throw new Error(resolveErrorMessage(data));
