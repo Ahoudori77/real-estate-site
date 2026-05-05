@@ -39,6 +39,10 @@ type ErrorResponse = {
   };
 };
 
+function buildAdminApiUrl(path: string): string {
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
 function resolveErrorMessage(data: AdminPropertyMutationResponse | ErrorResponse | null): string {
   if (!data || typeof data !== "object") {
     return "物件の保存に失敗しました。";
@@ -57,15 +61,8 @@ function resolveErrorMessage(data: AdminPropertyMutationResponse | ErrorResponse
 
 export async function createProperty(
   input: AdminPropertyCreateInput,
-  apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL,
 ): Promise<AdminPropertyMutationResponse> {
-  if (!apiBaseUrl) {
-    throw new Error("PUBLIC_API_BASE_URL is not set.");
-  }
-
-  const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, "");
-
-  const response = await fetch(`${normalizedApiBaseUrl}/api/management/properties`, {
+  const response = await fetch(buildAdminApiUrl("/api/admin/properties"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -91,23 +88,16 @@ export async function createProperty(
 export async function updateProperty(
   slug: string,
   input: AdminPropertyUpdateInput,
-  apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL,
 ): Promise<AdminPropertyMutationResponse> {
-  if (!apiBaseUrl) {
-    throw new Error("PUBLIC_API_BASE_URL is not set.");
-  }
-
-  const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, "");
-
   const response = await fetch(
-    `${normalizedApiBaseUrl}/api/management/properties/${encodeURIComponent(slug)}`,
+    buildAdminApiUrl(`/api/admin/properties/${encodeURIComponent(slug)}`),
     {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(input),
-    }
+    },
   );
 
   let data: AdminPropertyMutationResponse | ErrorResponse | null = null;
