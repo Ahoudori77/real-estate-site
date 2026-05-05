@@ -1,4 +1,4 @@
-import { mockProperties } from "../../data/mock/properties";
+import { env } from "cloudflare:workers";
 import type {
   PropertyDetail,
   PropertyListItem,
@@ -54,11 +54,21 @@ const toBooleanValue = (value: unknown): boolean | undefined => {
   return undefined;
 };
 
+type WorkerEnv = {
+  AZURE_FUNCTIONS_BASE_URL?: string;
+  PUBLIC_API_BASE_URL?: string;
+};
+
+const workerEnv = env as WorkerEnv;
+
 const getApiBaseUrl = () => {
-  const baseUrl = import.meta.env.PUBLIC_API_BASE_URL;
+  const baseUrl =
+    workerEnv.AZURE_FUNCTIONS_BASE_URL ??
+    workerEnv.PUBLIC_API_BASE_URL ??
+    import.meta.env.PUBLIC_API_BASE_URL;
 
   if (!baseUrl) {
-    throw new Error("PUBLIC_API_BASE_URL is not set.");
+    throw new Error("AZURE_FUNCTIONS_BASE_URL or PUBLIC_API_BASE_URL is not set.");
   }
 
   return baseUrl.replace(/\/$/, "");
@@ -523,12 +533,6 @@ const normalizePropertyItemsPayload = (data: unknown): PropertyListItem[] => {
   return rawItems.map((item) => normalizePropertyListItem(item));
 };
 
-const getMockPropertyItems = (): PropertyListItem[] => {
-  return mockProperties
-    .filter((property) => property.status === "published")
-    .map((property) => normalizePropertyListItem(property));
-};
-
 const fetchPropertyItemsForClientSideSearch = async (
   params: PropertySearchParams = {},
 ): Promise<PropertyListItem[]> => {
@@ -547,44 +551,31 @@ const fetchPropertyItemsForClientSideSearch = async (
 export const getProperties = async (
   params: PropertySearchParams = {},
 ): Promise<PropertySearchResult<PropertyListItem>> => {
-  try {
-    const items = await fetchPropertyItemsForClientSideSearch(params);
-    return createSearchResultFromItems(items, params);
-  } catch {
-    const items = getMockPropertyItems();
-    return createSearchResultFromItems(items, params);
-  }
+  const items = await fetchPropertyItemsForClientSideSearch(params);
+  return createSearchResultFromItems(items, params);
 };
 
 export const getPropertyBySlug = async (
   slug: string,
 ): Promise<PropertyDetail | null> => {
-  try {
-    const url = buildUrl(`/api/public/properties/${encodeURIComponent(slug)}`);
+  const url = buildUrl(`/api/public/properties/${encodeURIComponent(slug)}`);
 
-    const response = await fetch(url, {
-      headers: {
-        Accept: "application/json",
-      },
-    });
+  const response = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
 
-    if (response.status === 404) {
-      return null;
-    }
-
-    if (!response.ok) {
-      throw new Error(`Request failed: ${response.status} ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as unknown;
-    return normalizePropertyDetail(data);
-  } catch {
-    const property = mockProperties.find(
-      (item) => item.slug === slug && item.status === "published",
-    );
-
-    return property ? normalizePropertyDetail(property) : null;
+  if (response.status === 404) {
+    return null;
   }
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status} ${response.statusText}`);
+  }
+
+  const data = (await response.json()) as unknown;
+  return normalizePropertyDetail(data);
 };
 
 export const getRelatedProperties = async (
