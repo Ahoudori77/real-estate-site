@@ -1,13 +1,15 @@
 ---
-import { areaOptions, featureOptions } from "../../data/mock/areas";
+import { areaOptions } from "../../data/mock/areas";
 import { normalizePropertySearchParams } from "../../lib/search/query";
+import type { PublicFeatureOption } from "../../lib/api/features";
 import type { PropertySearchParams } from "../../types/search";
 
 interface Props {
   initialValues?: PropertySearchParams;
+  featureOptions?: PublicFeatureOption[];
 }
 
-const { initialValues = {} } = Astro.props;
+const { initialValues = {}, featureOptions = [] } = Astro.props;
 const values = normalizePropertySearchParams(initialValues);
 
 const selectedType = values.type ?? "";
@@ -160,17 +162,24 @@ const areaMap = Object.fromEntries(
   <fieldset class="feature-group">
     <legend>こだわり条件</legend>
     <div class="feature-options">
-      {featureOptions.map((feature) => (
-        <label class="feature-option">
-          <input
-            type="checkbox"
-            name="features"
-            value={feature}
-            checked={selectedFeatures.includes(feature)}
-          />
-          <span>{feature}</span>
-        </label>
-      ))}
+      {featureOptions.length > 0 ? (
+        featureOptions.map((feature) => (
+          <label class="feature-option">
+            <input
+              type="checkbox"
+              name="features"
+              value={feature.slug}
+              checked={
+                selectedFeatures.includes(feature.slug) ||
+                selectedFeatures.includes(feature.name)
+              }
+            />
+            <span>{feature.name}</span>
+          </label>
+        ))
+      ) : (
+        <p class="muted">こだわり条件を取得できませんでした。</p>
+      )}
     </div>
   </fieldset>
 

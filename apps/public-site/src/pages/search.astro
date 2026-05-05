@@ -1,6 +1,9 @@
 ---
+export const prerender = false;
+
 import SearchForm from "../components/search/SearchForm.astro";
 import PublicSiteLayout from "../layouts/PublicSiteLayout.astro";
+import { getPublicFeatureOptions } from "../lib/api/features";
 import {
   normalizePropertySearchParams,
   parsePropertySearchParams,
@@ -10,6 +13,8 @@ const searchParams = new URL(Astro.request.url).searchParams;
 const initialValues = normalizePropertySearchParams(
   parsePropertySearchParams(searchParams),
 );
+
+const featureOptions = await getPublicFeatureOptions();
 ---
 
 <PublicSiteLayout
@@ -40,7 +45,7 @@ const initialValues = normalizePropertySearchParams(
             </p>
           </div>
 
-          <SearchForm initialValues={initialValues} />
+          <SearchForm initialValues={initialValues} featureOptions={featureOptions} />
         </div>
       </div>
     </section>
