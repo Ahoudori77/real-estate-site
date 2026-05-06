@@ -77,6 +77,17 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     }
   };
 
+  const getPropertyTypeLabel = (propertyType) => {
+    switch (propertyType) {
+      case "house":
+        return "戸建て";
+      case "land":
+        return "土地";
+      default:
+        return propertyType ?? "-";
+    }
+  };
+
   const renderError = (message) => {
     if (!root) return;
     root.innerHTML = `<p class="admin-error">${escapeHtml(message)}</p>`;
@@ -117,7 +128,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         <div class="admin-empty-state">
           <p class="admin-empty-state__title">物件がまだ登録されていません</p>
           <p class="admin-empty-state__text">
-            新規物件を追加して、作成後に詳細編集画面で feature や画像を設定してください。
+            新規物件を追加して、作成後に詳細編集画面で こだわり条件や画像を設定してください。
           </p>
         </div>
       </div>
@@ -199,7 +210,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                         </span>
                       </td>
 
-                      <td>${escapeHtml(item.propertyType ?? "-")}</td>
+                      <td>${escapeHtml(getPropertyTypeLabel(item.propertyType))}</td>
 
                       <td>
                         ${escapeHtml(item.prefecture ?? "-")}

@@ -18,7 +18,7 @@ export const adminNavItems: AdminNavItem[] = [
   {
     label: "特徴管理",
     href: "/admin/features",
-    description: "検索用 feature 管理",
+    description: "検索用こだわり条件管理",
   },
   {
     label: "問い合わせ管理",

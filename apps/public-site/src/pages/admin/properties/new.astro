@@ -21,16 +21,16 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
 
         <div class="admin-form-grid">
           <div class="admin-form-field">
-            <label>slug</label>
+            <label>識別子（slug）</label>
             <input type="text" name="slug" placeholder="hyogo-amagasaki-new-house-01" required />
           </div>
 
           <div class="admin-form-field">
             <label>状態</label>
             <select name="status" required>
-              <option value="draft">draft</option>
-              <option value="published">published</option>
-              <option value="archived">archived</option>
+              <option value="draft">下書き</option>
+              <option value="published">公開</option>
+              <option value="archived">アーカイブ</option>
             </select>
           </div>
 
@@ -42,15 +42,15 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
           <div class="admin-form-field">
             <label>物件種別</label>
             <select name="propertyType" required>
-              <option value="house">house</option>
-              <option value="land">land</option>
+              <option value="house">戸建て</option>
+              <option value="land">土地</option>
             </select>
           </div>
 
           <div class="admin-form-field">
             <label>取引種別</label>
             <select name="transactionType" required>
-              <option value="sale">sale</option>
+              <option value="sale">売買</option>
             </select>
           </div>
 

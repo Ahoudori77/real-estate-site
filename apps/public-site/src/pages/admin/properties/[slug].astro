@@ -476,16 +476,16 @@ const slug = Astro.params.slug ?? "";
 
         <div class="admin-form-grid">
           <div class="admin-form-field">
-            <label>slug</label>
+            <label>識別子（slug）</label>
             <input type="text" value="${inputValue(item.slug)}" disabled />
           </div>
 
           <div class="admin-form-field">
             <label>状態</label>
             <select name="status" required>
-              <option value="draft" ${item.status === "draft" ? "selected" : ""}>draft</option>
-              <option value="published" ${item.status === "published" ? "selected" : ""}>published</option>
-              <option value="archived" ${item.status === "archived" ? "selected" : ""}>archived</option>
+              <option value="draft" ${item.status === "draft" ? "selected" : ""}>下書き</option>
+              <option value="published" ${item.status === "published" ? "selected" : ""}>公開</option>
+              <option value="archived" ${item.status === "archived" ? "selected" : ""}>アーカイブ</option>
             </select>
           </div>
 
@@ -497,15 +497,15 @@ const slug = Astro.params.slug ?? "";
           <div class="admin-form-field">
             <label>物件種別</label>
             <select name="propertyType" required>
-              <option value="house" ${item.propertyType === "house" ? "selected" : ""}>house</option>
-              <option value="land" ${item.propertyType === "land" ? "selected" : ""}>land</option>
+              <option value="house" ${item.propertyType === "house" ? "selected" : ""}>戸建て</option>
+              <option value="land" ${item.propertyType === "land" ? "selected" : ""}>土地</option>
             </select>
           </div>
 
           <div class="admin-form-field">
             <label>取引種別</label>
             <select name="transactionType" required>
-              <option value="sale" ${item.transactionType === "sale" ? "selected" : ""}>sale</option>
+              <option value="sale" ${item.transactionType === "sale" ? "selected" : ""}>売買</option>
             </select>
           </div>
 
@@ -566,7 +566,7 @@ const slug = Astro.params.slug ?? "";
         </div>
 
         <div class="admin-section__panel" style="margin-top: 24px;">
-          <h2 class="admin-card__title">feature 編集</h2>
+          <h2 class="admin-card__title">こだわり条件 編集</h2>
           <div class="admin-feature-grid">
             ${features
               .map(
