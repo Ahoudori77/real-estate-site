@@ -16,7 +16,7 @@ export const adminNavItems: AdminNavItem[] = [
     description: "物件一覧・登録・編集",
   },
   {
-    label: "特徴管理",
+    label: "こだわり条件管理",
     href: "/admin/features",
     description: "検索用こだわり条件管理",
   },
