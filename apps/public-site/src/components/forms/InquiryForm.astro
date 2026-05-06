@@ -17,7 +17,6 @@ const {
   submitLabel = "送信する",
 } = Astro.props;
 
-const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL ?? "";
 ---
 
 <section class="inquiry-box">
@@ -29,7 +28,6 @@ const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL ?? "";
   <form
     class="inquiry-form"
     data-inquiry-form
-    data-api-base-url={apiBaseUrl}
     data-inquiry-type={inquiryType}
     data-property-slug={propertySlug ?? ""}
   >
@@ -225,7 +223,6 @@ const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL ?? "";
     formElement.addEventListener("submit", async (event) => {
       event.preventDefault();
 
-      const apiBaseUrl = formElement.dataset.apiBaseUrl ?? "";
       const inquiryType = formElement.dataset.inquiryType ?? "general";
       const propertySlug = formElement.dataset.propertySlug?.trim() || null;
 
@@ -242,17 +239,14 @@ const apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL ?? "";
       submitButton.textContent = "送信中...";
 
       try {
-        await postInquiry(
-          {
-            inquiryType,
-            propertySlug,
-            name,
-            email,
-            phone,
-            message,
-          },
-          apiBaseUrl
-        );
+        await postInquiry({
+          inquiryType,
+          propertySlug,
+          name,
+          email,
+          phone,
+          message,
+        });
 
         formElement.reset();
         messageElement.textContent =

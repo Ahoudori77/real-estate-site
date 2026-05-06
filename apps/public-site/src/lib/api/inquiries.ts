@@ -1,68 +1,69 @@
-export type InquiryType = "general" | "property" | "visit" | "document" | "other";
-
-export type PublicInquiryInput = {
-  inquiryType: InquiryType;
-  propertySlug?: string | null;
+type InquiryPayload = {
+  inquiryType: string;
+  propertySlug: string | null;
   name: string;
   email: string;
-  phone?: string | null;
+  phone: string;
   message: string;
 };
 
-export type PublicInquiryResponse = {
-  ok: true;
-  inquiryId: string;
-  status: "received";
-};
-
-type ErrorResponse = {
-  ok: false;
+type InquiryResponse = {
+  ok: boolean;
+  inquiryId?: string | number | null;
+  status?: string;
   error?: {
     code?: string;
     message?: string;
   };
+  message?: string;
 };
 
-export async function postInquiry(
-  input: PublicInquiryInput,
-  apiBaseUrl = import.meta.env.PUBLIC_API_BASE_URL
-): Promise<PublicInquiryResponse> {
-  if (!apiBaseUrl) {
-    throw new Error("PUBLIC_API_BASE_URL is not set.");
+function resolveErrorMessage(data: InquiryResponse | null): string {
+  if (!data || typeof data !== "object") {
+    return "問い合わせの送信に失敗しました。";
   }
 
-  const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, "");
+  if (data.error?.message) {
+    return data.error.message;
+  }
 
-  const response = await fetch(`${normalizedApiBaseUrl}/api/public/inquiries`, {
+  if (typeof data.message === "string") {
+    return data.message;
+  }
+
+  return "問い合わせの送信に失敗しました。";
+}
+
+export async function postInquiry(
+  payload: InquiryPayload,
+  apiBaseUrl = "",
+): Promise<InquiryResponse> {
+  const endpoint = "/api/public/inquiries";
+  const normalizedApiBaseUrl = apiBaseUrl.replace(/\/$/, "");
+  const url = normalizedApiBaseUrl
+    ? `${normalizedApiBaseUrl}${endpoint}`
+    : endpoint;
+
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
     },
-    body: JSON.stringify({
-      inquiryType: input.inquiryType,
-      propertySlug: input.propertySlug ?? null,
-      name: input.name,
-      email: input.email,
-      phone: input.phone ?? null,
-      message: input.message,
-    }),
+    body: JSON.stringify(payload),
   });
 
-  let data: PublicInquiryResponse | ErrorResponse | null = null;
+  let data: InquiryResponse | null = null;
 
   try {
-    data = await response.json();
+    data = (await response.json()) as InquiryResponse;
   } catch {
     data = null;
   }
 
   if (!response.ok) {
-    throw new Error(
-      data && "error" in data && data.error?.message
-        ? data.error.message
-        : "問い合わせの送信に失敗しました。"
-    );
+    throw new Error(resolveErrorMessage(data));
   }
 
-  return data as PublicInquiryResponse;
+  return data ?? { ok: true };
 }
