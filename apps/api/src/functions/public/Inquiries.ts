@@ -5,6 +5,7 @@ import {
   InvocationContext,
 } from "@azure/functions";
 import { getSqlPool, sql } from "../../lib/sql";
+import { notifyAdminInquiry } from "../../lib/inquiryNotification";
 
 type InquiryType = "general" | "property" | "visit" | "document" | "other";
 
@@ -206,6 +207,19 @@ export async function publicInquiriesPost(
       `);
 
     const inquiryId = result.recordset?.[0]?.id ?? null;
+
+    await notifyAdminInquiry(
+      {
+        inquiryId: inquiryId === null ? null : String(inquiryId),
+        inquiryType: parsed.value.inquiryType,
+        propertySlug: parsed.value.propertySlug,
+        name: parsed.value.name,
+        email: parsed.value.email,
+        phone: parsed.value.phone,
+        message: parsed.value.message,
+      },
+      context,
+    );
 
     return jsonResponse(201, {
       ok: true,
