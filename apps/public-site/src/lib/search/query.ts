@@ -186,8 +186,11 @@ export const buildSearchHref = (
   return `/search${createPropertySearchQuery(params, options)}`;
 };
 
+type FeatureLabelMap = Record<string, string>;
+
 export const getActiveFilterLabels = (
   params: PropertySearchParams,
+  featureLabelMap: FeatureLabelMap = {},
 ): string[] => {
   const labels: string[] = [];
 
@@ -215,7 +218,7 @@ export const getActiveFilterLabels = (
   }
   if (params.floorPlan) labels.push(`間取り: ${params.floorPlan}`);
   for (const feature of params.features ?? []) {
-    labels.push(`条件: ${feature}`);
+    labels.push(`条件: ${featureLabelMap[feature] ?? feature}`);
   }
 
   return labels;

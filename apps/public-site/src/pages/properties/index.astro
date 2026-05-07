@@ -4,6 +4,7 @@ export const prerender = false;
 import Pagination from "../../components/common/Pagination.astro";
 import PropertyCard from "../../components/property/PropertyCard.astro";
 import PublicSiteLayout from "../../layouts/PublicSiteLayout.astro";
+import { getPublicFeatureOptions } from "../../lib/api/features";
 import { getProperties } from "../../lib/api/properties";
 import {
   buildPropertiesHref,
@@ -19,7 +20,19 @@ const params: PropertySearchParams = normalizePropertySearchParams(
 );
 
 const result = await getProperties(params);
-const activeFilters = getActiveFilterLabels(params);
+
+let featureLabelMap: Record<string, string> = {};
+
+try {
+  const featureOptions = await getPublicFeatureOptions();
+  featureLabelMap = Object.fromEntries(
+    featureOptions.map((feature) => [feature.slug, feature.name]),
+  );
+} catch (error) {
+  console.warn("[properties] failed to load feature labels", error);
+}
+
+const activeFilters = getActiveFilterLabels(params, featureLabelMap);
 
 const buildSortHref = (sort: "newest" | "price_asc" | "price_desc") =>
   buildPropertiesHref({
