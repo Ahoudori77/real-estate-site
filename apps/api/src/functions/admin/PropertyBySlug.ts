@@ -21,6 +21,8 @@ function mapManagementProperty(row: any) {
     accessInfo: row.access_info,
     builtYear: row.built_year,
     builtMonth: row.built_month,
+    latitude: row.latitude === null ? null : Number(row.latitude),
+    longitude: row.longitude === null ? null : Number(row.longitude),
     publishedAt: row.published_at,
     updatedAt: row.updated_at,
     images: row.images ?? [],
@@ -66,6 +68,8 @@ export async function getManagementPropertyBySlug(
           access_info,
           built_year,
           built_month,
+          latitude,
+          longitude,
           published_at,
           updated_at
         FROM properties

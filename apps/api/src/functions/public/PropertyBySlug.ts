@@ -18,6 +18,8 @@ type PropertyDetailRow = {
   access_info: string | null;
   built_year: number | null;
   built_month: number | null;
+  latitude: number | null;
+  longitude: number | null;
   status: string;
   published_at: Date | null;
 };
@@ -78,6 +80,8 @@ export async function publicPropertyBySlug(
         p.access_info,
         p.built_year,
         p.built_month,
+        p.latitude,
+        p.longitude,
         p.status,
         p.published_at
       FROM dbo.properties p
@@ -145,6 +149,8 @@ export async function publicPropertyBySlug(
         accessInfo: property.access_info,
         builtYear: property.built_year,
         builtMonth: property.built_month,
+        latitude: property.latitude === null ? null : Number(property.latitude),
+        longitude: property.longitude === null ? null : Number(property.longitude),
         status: property.status,
         publishedAt: property.published_at,
         images: imagesResult.recordset.map((row) => ({

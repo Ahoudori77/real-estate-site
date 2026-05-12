@@ -194,6 +194,8 @@ const slug = Astro.params.slug ?? "";
         accessInfo: String(formData.get("accessInfo") ?? "").trim() || null,
         builtYear: toNullableNumber(formData.get("builtYear")),
         builtMonth: toNullableNumber(formData.get("builtMonth")),
+        latitude: toNullableNumber(formData.get("latitude")),
+        longitude: toNullableNumber(formData.get("longitude")),
         status: String(formData.get("status") ?? "draft"),
         featureIds,
       };
@@ -217,6 +219,20 @@ const slug = Astro.params.slug ?? "";
 
         if (!Number.isInteger(payload.price) || payload.price < 0) {
           throw new Error("価格は0以上の整数で入力してください。");
+        }
+
+        if (
+          payload.latitude !== null &&
+          (payload.latitude < -90 || payload.latitude > 90)
+        ) {
+          throw new Error("緯度は -90 〜 90 の範囲で入力してください。");
+        }
+
+        if (
+          payload.longitude !== null &&
+          (payload.longitude < -180 || payload.longitude > 180)
+        ) {
+          throw new Error("経度は -180 〜 180 の範囲で入力してください。");
         }
 
         saveButton.disabled = true;
@@ -557,6 +573,32 @@ const slug = Astro.params.slug ?? "";
           <div class="admin-form-field admin-form-field--full">
             <label>アクセス情報</label>
             <input type="text" name="accessInfo" value="${inputValue(item.accessInfo)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>緯度</label>
+            <input
+              type="number"
+              name="latitude"
+              step="0.0000001"
+              min="-90"
+              max="90"
+              value="${numberValue(item.latitude)}"
+              placeholder="34.7337000"
+            />
+          </div>
+
+          <div class="admin-form-field">
+            <label>経度</label>
+            <input
+              type="number"
+              name="longitude"
+              step="0.0000001"
+              min="-180"
+              max="180"
+              value="${numberValue(item.longitude)}"
+              placeholder="135.4064000"
+            />
           </div>
 
           <div class="admin-form-field admin-form-field--full">
