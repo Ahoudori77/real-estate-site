@@ -22,6 +22,8 @@ const patchManagementPropertySchema = z.object({
   accessInfo: z.string().nullable(),
   builtYear: z.number().int().nullable(),
   builtMonth: z.number().int().nullable(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
   status: z.enum(["draft", "published", "archived"]),
   featureIds: z.array(z.string()).optional(),
 });
@@ -45,6 +47,8 @@ function mapManagementProperty(row: any) {
     accessInfo: row.access_info,
     builtYear: row.built_year,
     builtMonth: row.built_month,
+    latitude: row.latitude === null ? null : Number(row.latitude),
+    longitude: row.longitude === null ? null : Number(row.longitude),
     updatedAt: row.updated_at,
   };
 }
@@ -102,6 +106,8 @@ export async function patchManagementPropertyBySlug(
           access_info,
           built_year,
           built_month,
+          latitude,
+          longitude,
           updated_at
         FROM properties
         WHERE slug = @slug;
@@ -142,6 +148,8 @@ export async function patchManagementPropertyBySlug(
         .input("accessInfo", sql.NVarChar, input.accessInfo)
         .input("builtYear", sql.Int, input.builtYear)
         .input("builtMonth", sql.Int, input.builtMonth)
+        .input("latitude", sql.Decimal(10, 7), input.latitude ?? null)
+        .input("longitude", sql.Decimal(10, 7), input.longitude ?? null)
         .input("status", sql.NVarChar, input.status)
         .query(`
           UPDATE properties
@@ -160,6 +168,8 @@ export async function patchManagementPropertyBySlug(
             access_info = @accessInfo,
             built_year = @builtYear,
             built_month = @builtMonth,
+            latitude = @latitude,
+            longitude = @longitude,
             status = @status,
             updated_at = SYSUTCDATETIME()
           WHERE id = @id;
@@ -191,6 +201,8 @@ export async function patchManagementPropertyBySlug(
             access_info,
             built_year,
             built_month,
+            latitude,
+            longitude,
             updated_at
           FROM properties
           WHERE slug = @slug;

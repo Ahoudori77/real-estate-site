@@ -13,6 +13,8 @@ type AdminPropertyBaseInput = {
   accessInfo: string | null;
   builtYear: number | null;
   builtMonth: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
   status: "draft" | "published" | "archived";
 };
 

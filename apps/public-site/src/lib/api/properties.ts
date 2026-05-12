@@ -246,8 +246,16 @@ const normalizeLocation = (value: unknown, parentValue?: unknown) => {
       toStringValue(raw.access_note) ??
       toStringValue(parent.accessInfo) ??
       toStringValue(parent.access_info),
-    lat: toNumberValue(raw.lat) ?? toNumberValue(parent.lat),
-    lng: toNumberValue(raw.lng) ?? toNumberValue(parent.lng),
+    lat:
+      toNumberValue(raw.lat) ??
+      toNumberValue(raw.latitude) ??
+      toNumberValue(parent.lat) ??
+      toNumberValue(parent.latitude),
+    lng:
+      toNumberValue(raw.lng) ??
+      toNumberValue(raw.longitude) ??
+      toNumberValue(parent.lng) ??
+      toNumberValue(parent.longitude),
   };
 };
 
