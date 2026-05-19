@@ -7,6 +7,7 @@ import PropertyGallery from "../../components/property/PropertyGallery.astro";
 import PropertySpecsTable from "../../components/property/PropertySpecsTable.astro";
 import RelatedProperties from "../../components/property/RelatedProperties.astro";
 import PublicSiteLayout from "../../layouts/PublicSiteLayout.astro";
+import { env as cloudflareEnv } from "cloudflare:workers";
 import {
   getPropertyBySlug,
   getRelatedProperties,
@@ -66,12 +67,24 @@ const galleryImages = property
   : [];
 
 
-const runtimeEnv = (Astro.locals as any).runtime?.env ?? {};
+const googleMapsApiKeyFromCloudflare = String(
+  cloudflareEnv.PUBLIC_GOOGLE_MAPS_API_KEY ?? "",
+).trim();
+
+const googleMapsApiKeyFromImportMeta = String(
+  import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY ?? "",
+).trim();
 
 const googleMapsApiKey =
-  import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY ??
-  runtimeEnv.PUBLIC_GOOGLE_MAPS_API_KEY ??
-  "";
+  googleMapsApiKeyFromCloudflare || googleMapsApiKeyFromImportMeta;
+
+const googleMapsApiKeySource = googleMapsApiKeyFromCloudflare
+  ? "cloudflare:workers"
+  : googleMapsApiKeyFromImportMeta
+    ? "import.meta.env"
+    : "none";
+
+const hasGoogleMapsApiKey = Boolean(googleMapsApiKey);
 
 const mapLat = property?.location.lat;
 const mapLng = property?.location.lng;
@@ -203,6 +216,29 @@ const mapEmbedUrl =
                     <h2>周辺案内</h2>
                     <p>所在地周辺の地図を確認できます。</p>
                   </div>
+
+                  {mapEmbedUrl ? (
+                    <div class="map-frame-wrap">
+                      <iframe
+                        class="map-frame"
+                        src={mapEmbedUrl}
+                        loading="lazy"
+                        referrerpolicy="no-referrer-when-downgrade"
+                        allowfullscreen
+                        title={`${property.title}の周辺地図`}
+                      ></iframe>
+                    </div>
+                  ) : (
+                    <>
+                      <div class="map-placeholder">
+                        地図表示の準備中です。
+                      </div>
+                  <p style="font-size: 12px; color: #999;">
+                    maps-debug:
+                    coords={hasMapCoordinates ? "1" : "0"},
+                    key={hasGoogleMapsApiKey ? "1" : "0"},
+                    source={googleMapsApiKeySource}
+                  </p>
 
                   {mapEmbedUrl ? (
                     <div class="map-frame-wrap">
