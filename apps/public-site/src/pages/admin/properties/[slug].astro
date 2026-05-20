@@ -36,6 +36,15 @@ const slug = Astro.params.slug ?? "";
   const numberValue = (value) =>
     value === null || value === undefined || Number.isNaN(Number(value)) ? "" : String(value);
 
+  const coordinatePairValue = (latitude, longitude) => {
+    const lat = numberValue(latitude);
+    const lng = numberValue(longitude);
+
+    if (!lat || !lng) return "";
+
+    return `${lat}, ${lng}`;
+  };
+
   const toNullableNumber = (value) => {
     if (value === "" || value === null || value === undefined) return null;
     const num = Number(value);
@@ -102,10 +111,13 @@ const slug = Astro.params.slug ?? "";
           : "field-help coordinate-message coordinate-message--error";
     };
 
-    const applyCoordinateText = () => {
+    const applyCoordinateText = ({ showSuccessMessage = false } = {}) => {
       const coordinateText = coordinatePasteInput.value.trim();
 
       if (!coordinateText) {
+        latitudeInput.value = "";
+        longitudeInput.value = "";
+        coordinatePasteInput.setCustomValidity("");
         clearMessage();
         return;
       }
@@ -113,6 +125,11 @@ const slug = Astro.params.slug ?? "";
       const coordinates = parseGoogleMapsCoordinateText(coordinateText);
 
       if (!coordinates) {
+        latitudeInput.value = "";
+        longitudeInput.value = "";
+        coordinatePasteInput.setCustomValidity(
+          "座標を読み取れませんでした。例：34.733700, 135.406400",
+        );
         setMessage(
           "座標を読み取れませんでした。例：34.733700, 135.406400",
           "error",
@@ -122,16 +139,34 @@ const slug = Astro.params.slug ?? "";
 
       latitudeInput.value = String(coordinates.latitude);
       longitudeInput.value = String(coordinates.longitude);
+      coordinatePasteInput.setCustomValidity("");
 
-      setMessage("緯度・経度欄に反映しました。", "success");
+      if (showSuccessMessage) {
+        setMessage("座標を反映しました。", "success");
+      } else {
+        clearMessage();
+      }
     };
 
     coordinatePasteInput.addEventListener("paste", () => {
-      window.setTimeout(applyCoordinateText, 0);
+      window.setTimeout(() => {
+        applyCoordinateText({ showSuccessMessage: true });
+      }, 0);
     });
 
-    coordinatePasteInput.addEventListener("change", applyCoordinateText);
-    coordinatePasteInput.addEventListener("blur", applyCoordinateText);
+    coordinatePasteInput.addEventListener("input", () => {
+      applyCoordinateText();
+    });
+
+    coordinatePasteInput.addEventListener("change", () => {
+      applyCoordinateText({ showSuccessMessage: true });
+    });
+
+    coordinatePasteInput.addEventListener("blur", () => {
+      applyCoordinateText();
+    });
+
+    applyCoordinateText();
   };
 
   const buildAdminApiUrl = (path) => {
@@ -588,6 +623,16 @@ const slug = Astro.params.slug ?? "";
             <input type="text" value="${inputValue(item.slug)}" disabled />
           </div>
 
+          <div class="admin-form-field admin-form-field--full">
+            <label>物件名</label>
+            <input
+              type="text"
+              name="title"
+              value="${inputValue(item.title)}"
+              required
+            />
+          </div>
+
           <div class="admin-form-field">
             <label>状態</label>
             <select name="status" required>
@@ -595,11 +640,6 @@ const slug = Astro.params.slug ?? "";
               <option value="published" ${item.status === "published" ? "selected" : ""}>公開</option>
               <option value="archived" ${item.status === "archived" ? "selected" : ""}>アーカイブ</option>
             </select>
-          </div>
-
-          <div class="admin-form-field admin-form-field--full">
-            <label>物件名</label>
-            <input type="text" name="title" value="${inputValue(item.title)}" required />
           </div>
 
           <div class="admin-form-field">
@@ -668,43 +708,29 @@ const slug = Astro.params.slug ?? "";
           </div>
 
           <div class="admin-form-field admin-form-field--full">
-            <label for="coordinatePaste">Google Maps座標貼り付け</label>
+            <label for="coordinatePaste">Google Maps座標</label>
             <input
               id="coordinatePaste"
               type="text"
+              value="${inputValue(coordinatePairValue(item.latitude, item.longitude))}"
               placeholder="例：34.733700, 135.406400"
               autocomplete="off"
+              inputmode="decimal"
+            />
+            <input
+              type="hidden"
+              name="latitude"
+              value="${numberValue(item.latitude)}"
+            />
+            <input
+              type="hidden"
+              name="longitude"
+              value="${numberValue(item.longitude)}"
             />
             <p class="field-help">
               Google Mapsで右クリックしてコピーした座標をそのまま貼り付けできます。
             </p>
             <p id="coordinatePasteMessage" class="field-help coordinate-message"></p>
-          </div>
-
-          <div class="admin-form-field">
-            <label>緯度</label>
-            <input
-              type="number"
-              name="latitude"
-              step="0.0000001"
-              min="-90"
-              max="90"
-              value="${numberValue(item.latitude)}"
-              placeholder="34.7337000"
-            />
-          </div>
-
-          <div class="admin-form-field">
-            <label>経度</label>
-            <input
-              type="number"
-              name="longitude"
-              step="0.0000001"
-              min="-180"
-              max="180"
-              value="${numberValue(item.longitude)}"
-              placeholder="135.4064000"
-            />
           </div>
 
           <div class="admin-form-field admin-form-field--full">
