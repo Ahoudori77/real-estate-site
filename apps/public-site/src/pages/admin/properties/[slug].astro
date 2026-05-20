@@ -42,6 +42,98 @@ const slug = Astro.params.slug ?? "";
     return Number.isNaN(num) ? null : num;
   };
 
+  const parseGoogleMapsCoordinateText = (value) => {
+    const normalized = String(value ?? "")
+      .trim()
+      .replace(/[，、]/g, ",")
+      .replace(/\s+/g, " ");
+
+    const match = normalized.match(
+      /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/
+    );
+
+    if (!match) {
+      return null;
+    }
+
+    const latitude = Number(match[1]);
+    const longitude = Number(match[2]);
+
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      return null;
+    }
+
+    return { latitude, longitude };
+  };
+
+  const setupCoordinatePasteField = () => {
+    if (!root) return;
+
+    const coordinatePasteInput = root.querySelector("#coordinatePaste");
+    const coordinatePasteMessage = root.querySelector("#coordinatePasteMessage");
+    const latitudeInput = root.querySelector('input[name="latitude"]');
+    const longitudeInput = root.querySelector('input[name="longitude"]');
+
+    if (!(coordinatePasteInput instanceof HTMLInputElement)) return;
+    if (!(latitudeInput instanceof HTMLInputElement)) return;
+    if (!(longitudeInput instanceof HTMLInputElement)) return;
+
+    const clearMessage = () => {
+      if (!(coordinatePasteMessage instanceof HTMLParagraphElement)) return;
+
+      coordinatePasteMessage.textContent = "";
+      coordinatePasteMessage.className = "field-help coordinate-message";
+    };
+
+    const setMessage = (message, type) => {
+      if (!(coordinatePasteMessage instanceof HTMLParagraphElement)) return;
+
+      coordinatePasteMessage.textContent = message;
+      coordinatePasteMessage.className =
+        type === "success"
+          ? "field-help coordinate-message coordinate-message--success"
+          : "field-help coordinate-message coordinate-message--error";
+    };
+
+    const applyCoordinateText = () => {
+      const coordinateText = coordinatePasteInput.value.trim();
+
+      if (!coordinateText) {
+        clearMessage();
+        return;
+      }
+
+      const coordinates = parseGoogleMapsCoordinateText(coordinateText);
+
+      if (!coordinates) {
+        setMessage(
+          "座標を読み取れませんでした。例：34.733700, 135.406400",
+          "error",
+        );
+        return;
+      }
+
+      latitudeInput.value = String(coordinates.latitude);
+      longitudeInput.value = String(coordinates.longitude);
+
+      setMessage("緯度・経度欄に反映しました。", "success");
+    };
+
+    coordinatePasteInput.addEventListener("paste", () => {
+      window.setTimeout(applyCoordinateText, 0);
+    });
+
+    coordinatePasteInput.addEventListener("change", applyCoordinateText);
+    coordinatePasteInput.addEventListener("blur", applyCoordinateText);
+  };
+
   const buildAdminApiUrl = (path) => {
     return path.startsWith("/") ? path : `/${path}`;
   };
@@ -575,6 +667,20 @@ const slug = Astro.params.slug ?? "";
             <input type="text" name="accessInfo" value="${inputValue(item.accessInfo)}" />
           </div>
 
+          <div class="admin-form-field admin-form-field--full">
+            <label for="coordinatePaste">Google Maps座標貼り付け</label>
+            <input
+              id="coordinatePaste"
+              type="text"
+              placeholder="例：34.733700, 135.406400"
+              autocomplete="off"
+            />
+            <p class="field-help">
+              Google Mapsで右クリックしてコピーした座標をそのまま貼り付けできます。
+            </p>
+            <p id="coordinatePasteMessage" class="field-help coordinate-message"></p>
+          </div>
+
           <div class="admin-form-field">
             <label>緯度</label>
             <input
@@ -682,6 +788,7 @@ const slug = Astro.params.slug ?? "";
       </form>
     `;
 
+    setupCoordinatePasteField();
     bindForm();
     bindImageManager();
     void loadPropertyImages();
@@ -708,3 +815,27 @@ const slug = Astro.params.slug ?? "";
 
   void load();
 </script>
+
+
+<style>
+  .field-help {
+    margin: 6px 0 0;
+    color: #6b7280;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .coordinate-message {
+    min-height: 18px;
+  }
+
+  .coordinate-message--success {
+    color: #047857;
+    font-weight: 700;
+  }
+
+  .coordinate-message--error {
+    color: #b91c1c;
+    font-weight: 700;
+  }
+</style>
