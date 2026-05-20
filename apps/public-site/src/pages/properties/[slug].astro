@@ -78,14 +78,6 @@ const googleMapsApiKeyFromImportMeta = String(
 const googleMapsApiKey =
   googleMapsApiKeyFromCloudflare || googleMapsApiKeyFromImportMeta;
 
-const googleMapsApiKeySource = googleMapsApiKeyFromCloudflare
-  ? "cloudflare:workers"
-  : googleMapsApiKeyFromImportMeta
-    ? "import.meta.env"
-    : "none";
-
-const hasGoogleMapsApiKey = Boolean(googleMapsApiKey);
-
 const mapLat = property?.location.lat;
 const mapLng = property?.location.lng;
 
@@ -216,13 +208,6 @@ const mapEmbedUrl =
                     <h2>周辺案内</h2>
                     <p>所在地周辺の地図を確認できます。</p>
                   </div>
-
-                  <p style="font-size: 12px; color: #999;">
-                    maps-debug:
-                    coords={hasMapCoordinates ? "1" : "0"},
-                    key={hasGoogleMapsApiKey ? "1" : "0"},
-                    source={googleMapsApiKeySource}
-                  </p>
 
                   {mapEmbedUrl ? (
                     <div class="map-frame-wrap">
