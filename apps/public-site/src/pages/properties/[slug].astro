@@ -87,11 +87,13 @@ const hasMapCoordinates =
   typeof mapLng === "number" &&
   Number.isFinite(mapLng);
 
+const mapQuery = hasMapCoordinates ? `${mapLat},${mapLng}` : "";
+
 const mapEmbedUrl =
   hasMapCoordinates && googleMapsApiKey
-    ? `https://www.google.com/maps/embed/v1/view?key=${encodeURIComponent(
+    ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(
         googleMapsApiKey,
-      )}&center=${encodeURIComponent(`${mapLat},${mapLng}`)}&zoom=16&maptype=roadmap`
+      )}&q=${encodeURIComponent(mapQuery)}&zoom=16&maptype=roadmap`
     : "";
 ---
 
