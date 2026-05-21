@@ -4,13 +4,15 @@ import { getSqlPool, sql } from "../../lib/sql";
 type PropertyDetailRow = {
   id: string | number;
   slug: string;
+  property_number: string | null;
   title: string;
   property_type: string;
   transaction_type: string;
   prefecture: string;
   city: string;
   address: string;
-  price: number;
+  price_type: string;
+  price: number | null;
   land_area_sqm: number | null;
   building_area_sqm: number | null;
   layout: string | null;
@@ -20,6 +22,23 @@ type PropertyDetailRow = {
   built_month: number | null;
   latitude: number | null;
   longitude: number | null;
+
+  land_category: string | null;
+  city_planning_area: string | null;
+  zoning_district: string | null;
+  building_coverage_ratio: number | null;
+  floor_area_ratio: number | null;
+  road_access: string | null;
+
+  building_structure: string | null;
+  building_floors: string | null;
+  parking: string | null;
+
+  current_status: string | null;
+  handover_timing: string | null;
+  facilities: string | null;
+  remarks: string | null;
+
   status: string;
   published_at: Date | null;
 };
@@ -40,7 +59,7 @@ type PropertyFeatureRow = {
 
 export async function publicPropertyBySlug(
   request: HttpRequest,
-  context: InvocationContext
+  context: InvocationContext,
 ): Promise<HttpResponseInit> {
   try {
     const routeSlug =
@@ -66,12 +85,14 @@ export async function publicPropertyBySlug(
       SELECT
         p.id,
         p.slug,
+        p.property_number,
         p.title,
         p.property_type,
         p.transaction_type,
         p.prefecture,
         p.city,
         p.address,
+        p.price_type,
         p.price,
         p.land_area_sqm,
         p.building_area_sqm,
@@ -82,6 +103,23 @@ export async function publicPropertyBySlug(
         p.built_month,
         p.latitude,
         p.longitude,
+
+        p.land_category,
+        p.city_planning_area,
+        p.zoning_district,
+        p.building_coverage_ratio,
+        p.floor_area_ratio,
+        p.road_access,
+
+        p.building_structure,
+        p.building_floors,
+        p.parking,
+
+        p.current_status,
+        p.handover_timing,
+        p.facilities,
+        p.remarks,
+
         p.status,
         p.published_at
       FROM dbo.properties p
@@ -135,30 +173,63 @@ export async function publicPropertyBySlug(
       jsonBody: {
         id: String(property.id),
         slug: property.slug,
+        propertyNumber: property.property_number,
+
         title: property.title,
         propertyType: property.property_type,
         transactionType: property.transaction_type,
+
         prefecture: property.prefecture,
         city: property.city,
         address: property.address,
-        price: property.price,
-        landAreaSqm: property.land_area_sqm,
-        buildingAreaSqm: property.building_area_sqm,
+
+        priceType: property.price_type,
+        price: property.price === null ? null : Number(property.price),
+
+        landAreaSqm:
+          property.land_area_sqm === null ? null : Number(property.land_area_sqm),
+        buildingAreaSqm:
+          property.building_area_sqm === null ? null : Number(property.building_area_sqm),
         layout: property.layout,
+
         description: property.description,
         accessInfo: property.access_info,
         builtYear: property.built_year,
         builtMonth: property.built_month,
+
         latitude: property.latitude === null ? null : Number(property.latitude),
         longitude: property.longitude === null ? null : Number(property.longitude),
+
+        landCategory: property.land_category,
+        cityPlanningArea: property.city_planning_area,
+        zoningDistrict: property.zoning_district,
+        buildingCoverageRatio:
+          property.building_coverage_ratio === null
+            ? null
+            : Number(property.building_coverage_ratio),
+        floorAreaRatio:
+          property.floor_area_ratio === null ? null : Number(property.floor_area_ratio),
+        roadAccess: property.road_access,
+
+        buildingStructure: property.building_structure,
+        buildingFloors: property.building_floors,
+        parking: property.parking,
+
+        currentStatus: property.current_status,
+        handoverTiming: property.handover_timing,
+        facilities: property.facilities,
+        remarks: property.remarks,
+
         status: property.status,
         publishedAt: property.published_at,
+
         images: imagesResult.recordset.map((row) => ({
           id: String(row.id),
           imageUrl: row.image_url,
           altText: row.alt_text,
           sortOrder: row.sort_order,
         })),
+
         featureSlugs: featuresResult.recordset.map((row) => row.slug),
         features: featuresResult.recordset.map((row) => ({
           slug: row.slug,

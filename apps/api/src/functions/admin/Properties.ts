@@ -5,45 +5,115 @@ import { getSqlPool, sql } from "../../lib/sql";
 type PropertyRow = {
   id: number;
   slug: string;
+  property_number: string | null;
   title: string;
   property_type: string;
   transaction_type: string;
   prefecture: string;
   city: string;
-  price: number;
+  price_type: string;
+  price: number | null;
   land_area_sqm: number | null;
   building_area_sqm: number | null;
   layout: string | null;
   status: string;
   published_at: Date | null;
   thumbnail_url: string | null;
+
+  land_category: string | null;
+  city_planning_area: string | null;
+  zoning_district: string | null;
+  building_coverage_ratio: number | null;
+  floor_area_ratio: number | null;
+  road_access: string | null;
+
+  building_structure: string | null;
+  building_floors: string | null;
+  parking: string | null;
+
+  current_status: string | null;
+  handover_timing: string | null;
+  facilities: string | null;
+  remarks: string | null;
 };
 
 type CountRow = {
   total: number;
 };
 
-const createManagementPropertySchema = z.object({
-  slug: z
-    .string()
-    .min(1)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "slug must be lowercase kebab-case"),
-  title: z.string().min(1),
-  propertyType: z.enum(["land", "house"]),
-  transactionType: z.literal("sale"),
-  prefecture: z.string().min(1),
-  city: z.string().min(1),
-  address: z.string().min(1),
-  price: z.number().int().nonnegative(),
-  landAreaSqm: z.number().nullable(),
-  buildingAreaSqm: z.number().nullable(),
-  layout: z.string().nullable(),
-  description: z.string(),
-  accessInfo: z.string().nullable(),
-  builtYear: z.number().int().nullable(),
-  builtMonth: z.number().int().nullable(),
-  status: z.enum(["draft", "published", "archived"]),
-});
+const slugSchema = z
+  .string()
+  .min(1)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "slug must be lowercase kebab-case");
+
+const nullableStringSchema = z.string().nullable().optional();
+const nullableNumberSchema = z.number().nullable().optional();
+
+const createManagementPropertySchema = z
+  .object({
+    // 既存UI互換のため slug は残す。
+    // Review-004 以降で画面上は propertyNumber を主表示に寄せる。
+    slug: slugSchema.optional(),
+    propertyNumber: z.string().min(1).optional(),
+
+    title: z.string().min(1),
+    propertyType: z.enum(["land", "house"]),
+    transactionType: z.enum(["seller", "brokerage"]),
+
+    prefecture: z.string().min(1),
+    city: z.string().min(1),
+    address: z.string().min(1),
+
+    priceType: z.enum(["fixed", "consultation"]).default("fixed"),
+    price: z.number().int().nonnegative().nullable().optional(),
+
+    landAreaSqm: z.number().nullable(),
+    buildingAreaSqm: z.number().nullable(),
+    layout: z.string().nullable(),
+
+    description: z.string(),
+    accessInfo: z.string().nullable(),
+    builtYear: z.number().int().nullable(),
+    builtMonth: z.number().int().nullable(),
+
+    latitude: z.number().nullable().optional(),
+    longitude: z.number().nullable().optional(),
+
+    status: z.enum(["draft", "published", "archived"]),
+
+    landCategory: nullableStringSchema,
+    cityPlanningArea: nullableStringSchema,
+    zoningDistrict: nullableStringSchema,
+    buildingCoverageRatio: nullableNumberSchema,
+    floorAreaRatio: nullableNumberSchema,
+    roadAccess: nullableStringSchema,
+
+    buildingStructure: nullableStringSchema,
+    buildingFloors: nullableStringSchema,
+    parking: nullableStringSchema,
+
+    currentStatus: nullableStringSchema,
+    handoverTiming: nullableStringSchema,
+    facilities: nullableStringSchema,
+    remarks: nullableStringSchema,
+  })
+  .superRefine((data, ctx) => {
+    if (!data.slug && !data.propertyNumber) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["propertyNumber"],
+        message: "propertyNumber or slug is required.",
+      });
+    }
+
+    if (data.priceType === "fixed" && (data.price === null || data.price === undefined)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["price"],
+        message: "price is required when priceType is fixed.",
+      });
+    }
+  });
 
 function isDuplicateKeyError(error: unknown): boolean {
   return !!(
@@ -61,7 +131,7 @@ function applyAdminFilters(
     prefecture?: string;
     city?: string;
     featureSlugs: string[];
-  }
+  },
 ) {
   const whereClauses: string[] = [];
 
@@ -100,9 +170,56 @@ function applyAdminFilters(
   return whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
 }
 
+function normalizeNullableString(value: string | null | undefined): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? null : trimmed;
+}
+
+function mapPropertyListRow(row: PropertyRow) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    propertyNumber: row.property_number,
+    title: row.title,
+    propertyType: row.property_type,
+    transactionType: row.transaction_type,
+    prefecture: row.prefecture,
+    city: row.city,
+    priceType: row.price_type,
+    price: row.price === null ? null : Number(row.price),
+    landAreaSqm: row.land_area_sqm === null ? null : Number(row.land_area_sqm),
+    buildingAreaSqm: row.building_area_sqm === null ? null : Number(row.building_area_sqm),
+    layout: row.layout,
+    status: row.status,
+    thumbnailUrl: row.thumbnail_url,
+    publishedAt: row.published_at,
+
+    landCategory: row.land_category,
+    cityPlanningArea: row.city_planning_area,
+    zoningDistrict: row.zoning_district,
+    buildingCoverageRatio:
+      row.building_coverage_ratio === null ? null : Number(row.building_coverage_ratio),
+    floorAreaRatio: row.floor_area_ratio === null ? null : Number(row.floor_area_ratio),
+    roadAccess: row.road_access,
+
+    buildingStructure: row.building_structure,
+    buildingFloors: row.building_floors,
+    parking: row.parking,
+
+    currentStatus: row.current_status,
+    handoverTiming: row.handover_timing,
+    facilities: row.facilities,
+    remarks: row.remarks,
+  };
+}
+
 export async function adminProperties(
   request: HttpRequest,
-  context: InvocationContext
+  context: InvocationContext,
 ): Promise<HttpResponseInit> {
   try {
     const pool = await getSqlPool();
@@ -153,17 +270,36 @@ export async function adminProperties(
       SELECT
         p.id,
         p.slug,
+        p.property_number,
         p.title,
         p.property_type,
         p.transaction_type,
         p.prefecture,
         p.city,
+        p.price_type,
         p.price,
         p.land_area_sqm,
         p.building_area_sqm,
         p.layout,
         p.status,
         p.published_at,
+
+        p.land_category,
+        p.city_planning_area,
+        p.zoning_district,
+        p.building_coverage_ratio,
+        p.floor_area_ratio,
+        p.road_access,
+
+        p.building_structure,
+        p.building_floors,
+        p.parking,
+
+        p.current_status,
+        p.handover_timing,
+        p.facilities,
+        p.remarks,
+
         thumb.image_url AS thumbnail_url
       FROM dbo.properties p
       OUTER APPLY (
@@ -183,22 +319,7 @@ export async function adminProperties(
     return {
       status: 200,
       jsonBody: {
-        items: listResult.recordset.map((row: PropertyRow) => ({
-          id: row.id,
-          slug: row.slug,
-          title: row.title,
-          propertyType: row.property_type,
-          transactionType: row.transaction_type,
-          prefecture: row.prefecture,
-          city: row.city,
-          price: row.price,
-          landAreaSqm: row.land_area_sqm,
-          buildingAreaSqm: row.building_area_sqm,
-          layout: row.layout,
-          status: row.status,
-          thumbnailUrl: row.thumbnail_url,
-          publishedAt: row.published_at,
-        })),
+        items: listResult.recordset.map(mapPropertyListRow),
         total,
         page,
         pageSize,
@@ -218,7 +339,7 @@ export async function adminProperties(
 
 export async function createManagementProperty(
   request: HttpRequest,
-  context: InvocationContext
+  context: InvocationContext,
 ): Promise<HttpResponseInit> {
   try {
     const body = await request.json();
@@ -236,17 +357,24 @@ export async function createManagementProperty(
 
     const input = parsed.data;
     const pool = await getSqlPool();
+
+    const propertyNumber = input.propertyNumber ?? input.slug ?? "";
+    const slug = input.slug ?? propertyNumber;
+    const priceType = input.priceType;
+    const price = priceType === "consultation" ? null : input.price ?? null;
     const publishedAt = input.status === "published" ? new Date() : null;
 
     const insertResult = await pool.request()
-      .input("slug", sql.NVarChar(200), input.slug)
+      .input("slug", sql.NVarChar(200), slug)
+      .input("propertyNumber", sql.NVarChar(200), propertyNumber)
       .input("title", sql.NVarChar(200), input.title)
       .input("propertyType", sql.NVarChar(20), input.propertyType)
       .input("transactionType", sql.NVarChar(20), input.transactionType)
       .input("prefecture", sql.NVarChar(100), input.prefecture)
       .input("city", sql.NVarChar(100), input.city)
       .input("address", sql.NVarChar(255), input.address)
-      .input("price", sql.Int, input.price)
+      .input("priceType", sql.NVarChar(20), priceType)
+      .input("price", sql.Int, price)
       .input("landAreaSqm", sql.Decimal(18, 2), input.landAreaSqm)
       .input("buildingAreaSqm", sql.Decimal(18, 2), input.buildingAreaSqm)
       .input("layout", sql.NVarChar(100), input.layout)
@@ -254,17 +382,37 @@ export async function createManagementProperty(
       .input("accessInfo", sql.NVarChar(255), input.accessInfo)
       .input("builtYear", sql.Int, input.builtYear)
       .input("builtMonth", sql.Int, input.builtMonth)
+      .input("latitude", sql.Decimal(10, 7), input.latitude ?? null)
+      .input("longitude", sql.Decimal(10, 7), input.longitude ?? null)
       .input("status", sql.NVarChar(20), input.status)
       .input("publishedAt", sql.DateTime2, publishedAt)
+
+      .input("landCategory", sql.NVarChar(100), normalizeNullableString(input.landCategory))
+      .input("cityPlanningArea", sql.NVarChar(100), normalizeNullableString(input.cityPlanningArea))
+      .input("zoningDistrict", sql.NVarChar(100), normalizeNullableString(input.zoningDistrict))
+      .input("buildingCoverageRatio", sql.Decimal(10, 2), input.buildingCoverageRatio ?? null)
+      .input("floorAreaRatio", sql.Decimal(10, 2), input.floorAreaRatio ?? null)
+      .input("roadAccess", sql.NVarChar(255), normalizeNullableString(input.roadAccess))
+
+      .input("buildingStructure", sql.NVarChar(100), normalizeNullableString(input.buildingStructure))
+      .input("buildingFloors", sql.NVarChar(100), normalizeNullableString(input.buildingFloors))
+      .input("parking", sql.NVarChar(100), normalizeNullableString(input.parking))
+
+      .input("currentStatus", sql.NVarChar(100), normalizeNullableString(input.currentStatus))
+      .input("handoverTiming", sql.NVarChar(100), normalizeNullableString(input.handoverTiming))
+      .input("facilities", sql.NVarChar(sql.MAX), normalizeNullableString(input.facilities))
+      .input("remarks", sql.NVarChar(sql.MAX), normalizeNullableString(input.remarks))
       .query(`
         INSERT INTO dbo.properties (
           slug,
+          property_number,
           title,
           property_type,
           transaction_type,
           prefecture,
           city,
           address,
+          price_type,
           price,
           land_area_sqm,
           building_area_sqm,
@@ -273,20 +421,41 @@ export async function createManagementProperty(
           access_info,
           built_year,
           built_month,
+          latitude,
+          longitude,
           status,
+
+          land_category,
+          city_planning_area,
+          zoning_district,
+          building_coverage_ratio,
+          floor_area_ratio,
+          road_access,
+
+          building_structure,
+          building_floors,
+          parking,
+
+          current_status,
+          handover_timing,
+          facilities,
+          remarks,
+
           created_at,
           updated_at,
           published_at
         )
-        OUTPUT inserted.id, inserted.slug
+        OUTPUT inserted.id, inserted.slug, inserted.property_number
         VALUES (
           @slug,
+          @propertyNumber,
           @title,
           @propertyType,
           @transactionType,
           @prefecture,
           @city,
           @address,
+          @priceType,
           @price,
           @landAreaSqm,
           @buildingAreaSqm,
@@ -295,7 +464,26 @@ export async function createManagementProperty(
           @accessInfo,
           @builtYear,
           @builtMonth,
+          @latitude,
+          @longitude,
           @status,
+
+          @landCategory,
+          @cityPlanningArea,
+          @zoningDistrict,
+          @buildingCoverageRatio,
+          @floorAreaRatio,
+          @roadAccess,
+
+          @buildingStructure,
+          @buildingFloors,
+          @parking,
+
+          @currentStatus,
+          @handoverTiming,
+          @facilities,
+          @remarks,
+
           SYSUTCDATETIME(),
           SYSUTCDATETIME(),
           @publishedAt
@@ -307,6 +495,7 @@ export async function createManagementProperty(
       jsonBody: {
         id: String(insertResult.recordset[0].id),
         slug: insertResult.recordset[0].slug,
+        propertyNumber: insertResult.recordset[0].property_number,
         message: "Property created successfully.",
       },
     };
@@ -317,7 +506,7 @@ export async function createManagementProperty(
       return {
         status: 409,
         jsonBody: {
-          message: "The slug is already in use.",
+          message: "The property number or slug is already in use.",
         },
       };
     }

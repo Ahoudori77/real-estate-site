@@ -4,18 +4,36 @@ import { getSqlPool, sql } from "../../lib/sql";
 type PropertyRow = {
   id: number;
   slug: string;
+  property_number: string | null;
   title: string;
   property_type: string;
   transaction_type: string;
   prefecture: string;
   city: string;
-  price: number;
+  price_type: string;
+  price: number | null;
   land_area_sqm: number | null;
   building_area_sqm: number | null;
   layout: string | null;
   status: string;
   published_at: Date | null;
   thumbnail_url: string | null;
+
+  land_category: string | null;
+  city_planning_area: string | null;
+  zoning_district: string | null;
+  building_coverage_ratio: number | null;
+  floor_area_ratio: number | null;
+  road_access: string | null;
+
+  building_structure: string | null;
+  building_floors: string | null;
+  parking: string | null;
+
+  current_status: string | null;
+  handover_timing: string | null;
+  facilities: string | null;
+  remarks: string | null;
 };
 
 type PropertyFeatureRow = {
@@ -141,6 +159,52 @@ async function fetchFeaturesByPropertyIds(
   return featureMap;
 }
 
+function mapPublicPropertyListRow(row: PropertyRow, features: PublicFeature[]) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    propertyNumber: row.property_number,
+
+    title: row.title,
+    propertyType: row.property_type,
+    transactionType: row.transaction_type,
+
+    prefecture: row.prefecture,
+    city: row.city,
+
+    priceType: row.price_type,
+    price: row.price === null ? null : Number(row.price),
+
+    landAreaSqm: row.land_area_sqm === null ? null : Number(row.land_area_sqm),
+    buildingAreaSqm: row.building_area_sqm === null ? null : Number(row.building_area_sqm),
+    layout: row.layout,
+
+    status: row.status,
+    thumbnailUrl: row.thumbnail_url,
+    publishedAt: row.published_at,
+
+    landCategory: row.land_category,
+    cityPlanningArea: row.city_planning_area,
+    zoningDistrict: row.zoning_district,
+    buildingCoverageRatio:
+      row.building_coverage_ratio === null ? null : Number(row.building_coverage_ratio),
+    floorAreaRatio: row.floor_area_ratio === null ? null : Number(row.floor_area_ratio),
+    roadAccess: row.road_access,
+
+    buildingStructure: row.building_structure,
+    buildingFloors: row.building_floors,
+    parking: row.parking,
+
+    currentStatus: row.current_status,
+    handoverTiming: row.handover_timing,
+    facilities: row.facilities,
+    remarks: row.remarks,
+
+    featureSlugs: features.map((feature) => feature.slug),
+    features,
+  };
+}
+
 export async function publicProperties(
   request: HttpRequest,
   context: InvocationContext,
@@ -205,17 +269,36 @@ export async function publicProperties(
       SELECT
         p.id,
         p.slug,
+        p.property_number,
         p.title,
         p.property_type,
         p.transaction_type,
         p.prefecture,
         p.city,
+        p.price_type,
         p.price,
         p.land_area_sqm,
         p.building_area_sqm,
         p.layout,
         p.status,
         p.published_at,
+
+        p.land_category,
+        p.city_planning_area,
+        p.zoning_district,
+        p.building_coverage_ratio,
+        p.floor_area_ratio,
+        p.road_access,
+
+        p.building_structure,
+        p.building_floors,
+        p.parking,
+
+        p.current_status,
+        p.handover_timing,
+        p.facilities,
+        p.remarks,
+
         thumb.image_url AS thumbnail_url
       FROM dbo.properties p
       OUTER APPLY (
@@ -237,25 +320,7 @@ export async function publicProperties(
       jsonBody: {
         items: listResult.recordset.map((row) => {
           const features = featuresByPropertyId.get(String(row.id)) ?? [];
-
-          return {
-            id: row.id,
-            slug: row.slug,
-            title: row.title,
-            propertyType: row.property_type,
-            transactionType: row.transaction_type,
-            prefecture: row.prefecture,
-            city: row.city,
-            price: row.price,
-            landAreaSqm: row.land_area_sqm,
-            buildingAreaSqm: row.building_area_sqm,
-            layout: row.layout,
-            status: row.status,
-            thumbnailUrl: row.thumbnail_url,
-            publishedAt: row.published_at,
-            featureSlugs: features.map((feature) => feature.slug),
-            features,
-          };
+          return mapPublicPropertyListRow(row, features);
         }),
         total,
         page,
