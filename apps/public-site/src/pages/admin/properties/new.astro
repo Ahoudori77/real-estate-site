@@ -21,8 +21,23 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
 
         <div class="admin-form-grid">
           <div class="admin-form-field">
-            <label>識別子（slug）</label>
-            <input type="text" name="slug" placeholder="hyogo-amagasaki-new-house-01" required />
+            <label>物件番号</label>
+            <input
+              type="text"
+              name="propertyNumber"
+              placeholder="A-1001"
+              required
+            />
+          </div>
+
+          <div class="admin-form-field">
+            <label>URL識別子（slug）</label>
+            <input
+              type="text"
+              name="slug"
+              placeholder="hyogo-amagasaki-new-house-01"
+              required
+            />
           </div>
 
           <div class="admin-form-field">
@@ -50,7 +65,8 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
           <div class="admin-form-field">
             <label>取引種別</label>
             <select name="transactionType" required>
-              <option value="sale">売買</option>
+              <option value="seller">売主</option>
+              <option value="brokerage">仲介</option>
             </select>
           </div>
 
@@ -70,9 +86,24 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
           </div>
 
           <div class="admin-form-field">
-            <label>価格</label>
-            <input type="number" name="price" value="0" min="0" step="1" required />
+            <label>価格表示</label>
+
+            <select name="priceType" required>
+              <option value="fixed">価格表示</option>
+              <option value="consultation">ご相談</option>
+            </select>
           </div>
+
+          <div class="admin-form-field">
+            <label>価格</label>
+              <input
+                type="number"
+                name="price"
+                value="0"
+                min="0"
+                step="1"
+              />
+           </div>
 
           <div class="admin-form-field">
             <label>土地面積（㎡）</label>
@@ -105,6 +136,83 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
           </div>
 
           <div class="admin-form-field admin-form-field--full">
+            <h2 class="admin-card__title">土地詳細</h2>
+          </div>
+
+          <div class="admin-form-field">
+            <label>地目</label>
+            <input type="text" name="landCategory" placeholder="宅地" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>都市計画区域</label>
+            <input type="text" name="cityPlanningArea" placeholder="都市計画区域内" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>用途地域</label>
+            <input type="text" name="zoningDistrict" placeholder="第一種住居地域" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>建ぺい率（%）</label>
+            <input type="number" name="buildingCoverageRatio" min="0" step="0.01" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>容積率（%）</label>
+            <input type="number" name="floorAreaRatio" min="0" step="0.01" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>接道状況</label>
+            <input type="text" name="roadAccess" placeholder="北側 公道 幅員6m" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <h2 class="admin-card__title">建物詳細</h2>
+          </div>
+
+          <div class="admin-form-field">
+            <label>建物構造</label>
+            <input type="text" name="buildingStructure" placeholder="木造" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>階数</label>
+            <input type="text" name="buildingFloors" placeholder="2階建" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>駐車場</label>
+            <input type="text" name="parking" placeholder="駐車場あり" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <h2 class="admin-card__title">共通詳細</h2>
+          </div>
+
+          <div class="admin-form-field">
+            <label>現況</label>
+            <input type="text" name="currentStatus" placeholder="空家 / 更地" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>引渡時期</label>
+            <input type="text" name="handoverTiming" placeholder="相談" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>設備</label>
+            <textarea rows="3" name="facilities" placeholder="公営水道、公共下水、プロパンガス"></textarea>
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>備考</label>
+            <textarea rows="3" name="remarks" placeholder="補足事項を入力してください。"></textarea>
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
             <label>説明文</label>
             <textarea rows="6" name="description" placeholder="物件の説明文を入力してください。" required></textarea>
           </div>
@@ -121,6 +229,23 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
   const messageBox = form?.querySelector("[data-admin-create-message]");
   const createButton = form?.querySelector("[data-admin-create-button]");
   const slugInput = form?.querySelector('input[name="slug"]');
+  const priceTypeInput = form?.querySelector('select[name="priceType"]');
+  const priceInput = form?.querySelector('input[name="price"]');
+  const syncPriceInputState = () => {
+    if (
+      priceTypeInput instanceof HTMLSelectElement &&
+      priceInput instanceof HTMLInputElement
+    ) {
+      const isConsultation = priceTypeInput.value === "consultation";
+      priceInput.disabled = isConsultation;
+      priceInput.value = isConsultation ? "" : priceInput.value || "0";
+    }
+  };
+
+  if (priceTypeInput instanceof HTMLSelectElement) {
+    priceTypeInput.addEventListener("change", syncPriceInputState);
+    syncPriceInputState();
+  }
 
   const normalizeSlug = (value) =>
     String(value)
@@ -166,11 +291,14 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
         slug: normalizeSlug(formData.get("slug") ?? ""),
         title: String(formData.get("title") ?? "").trim(),
         propertyType: String(formData.get("propertyType") ?? "house"),
-        transactionType: String(formData.get("transactionType") ?? "sale"),
+        transactionType: String(formData.get("transactionType") ?? "seller"),
         prefecture: String(formData.get("prefecture") ?? "").trim(),
         city: String(formData.get("city") ?? "").trim(),
         address: String(formData.get("address") ?? "").trim(),
-        price: Number(formData.get("price") ?? 0),
+        price:
+          String(formData.get("priceType")) === "consultation"
+            ? null
+            : Number(formData.get("price") ?? 0),
         landAreaSqm: toNullableNumber(formData.get("landAreaSqm")),
         buildingAreaSqm: toNullableNumber(formData.get("buildingAreaSqm")),
         layout: String(formData.get("layout") ?? "").trim() || null,
@@ -179,6 +307,24 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
         builtYear: toNullableNumber(formData.get("builtYear")),
         builtMonth: toNullableNumber(formData.get("builtMonth")),
         status: String(formData.get("status") ?? "draft"),
+        propertyNumber: String(formData.get("propertyNumber") ?? "").trim(),
+        priceType: String(formData.get("priceType") ?? "fixed"),
+
+        landCategory: String(formData.get("landCategory") ?? "").trim() || null,
+        cityPlanningArea: String(formData.get("cityPlanningArea") ?? "").trim() || null,
+        zoningDistrict: String(formData.get("zoningDistrict") ?? "").trim() || null,
+        buildingCoverageRatio: toNullableNumber(formData.get("buildingCoverageRatio")),
+        floorAreaRatio: toNullableNumber(formData.get("floorAreaRatio")),
+        roadAccess: String(formData.get("roadAccess") ?? "").trim() || null,
+
+        buildingStructure: String(formData.get("buildingStructure") ?? "").trim() || null,
+        buildingFloors: String(formData.get("buildingFloors") ?? "").trim() || null,
+        parking: String(formData.get("parking") ?? "").trim() || null,
+
+        currentStatus: String(formData.get("currentStatus") ?? "").trim() || null,
+        handoverTiming: String(formData.get("handoverTiming") ?? "").trim() || null,
+        facilities: String(formData.get("facilities") ?? "").trim() || null,
+        remarks: String(formData.get("remarks") ?? "").trim() || null,
       };
 
       try {
@@ -189,6 +335,8 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
           ["市区町村", payload.city],
           ["住所", payload.address],
           ["説明文", payload.description],
+          ["物件番号", payload.propertyNumber],
+          ["価格タイプ", payload.priceType],
         ];
 
         const missingField = requiredFields.find(([, value]) => !value);
@@ -197,10 +345,15 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
           throw new Error(`${missingField[0]}を入力してください。`);
         }
 
-        if (!Number.isInteger(payload.price) || payload.price < 0) {
-          throw new Error("価格は0以上の整数で入力してください。");
+        if (payload.priceType === "fixed") {
+          if (
+            payload.price === null ||
+            !Number.isInteger(payload.price) ||
+            payload.price < 0
+          ) {
+            throw new Error("価格は0以上の整数で入力してください。");
+          }
         }
-
         createButton.disabled = true;
         createButton.textContent = "作成中...";
 

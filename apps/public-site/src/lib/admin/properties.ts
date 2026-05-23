@@ -1,20 +1,51 @@
 type AdminPropertyBaseInput = {
   title: string;
+
   propertyType: "land" | "house";
-  transactionType: "sale";
+
+  transactionType: "seller" | "brokerage";
+
   prefecture: string;
   city: string;
   address: string;
-  price: number;
+
+  propertyNumber: string;
+
+  priceType: "fixed" | "consultation";
+
+  price: number | null;
+
   landAreaSqm: number | null;
   buildingAreaSqm: number | null;
+
   layout: string | null;
+
   description: string;
+
   accessInfo: string | null;
+
   builtYear: number | null;
   builtMonth: number | null;
+
   latitude?: number | null;
   longitude?: number | null;
+
+  landCategory: string | null;
+  cityPlanningArea: string | null;
+  zoningDistrict: string | null;
+  buildingCoverageRatio: number | null;
+  floorAreaRatio: number | null;
+  roadAccess: string | null;
+
+  buildingStructure: string | null;
+  buildingFloors: string | null;
+  parking: string | null;
+
+  currentStatus: string | null;
+  handoverTiming: string | null;
+  facilities: string | null;
+  remarks: string | null;
+
   status: "draft" | "published" | "archived";
 };
 
@@ -50,8 +81,15 @@ function resolveErrorMessage(data: AdminPropertyMutationResponse | ErrorResponse
     return "物件の保存に失敗しました。";
   }
 
-  if ("error" in data && data.error?.message) {
-    return data.error.message;
+  const maybeError = "error" in data ? data.error : undefined;
+
+  if (
+    maybeError &&
+    typeof maybeError === "object" &&
+    "message" in maybeError &&
+    typeof maybeError.message === "string"
+  ) {
+    return maybeError.message;
   }
 
   if ("message" in data && typeof data.message === "string") {

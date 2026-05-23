@@ -284,6 +284,25 @@ const slug = Astro.params.slug ?? "";
     if (!(messageBox instanceof HTMLParagraphElement)) return;
     if (!(saveButton instanceof HTMLButtonElement)) return;
 
+    const priceTypeInput = form.querySelector('select[name="priceType"]');
+    const priceInput = form.querySelector('input[name="price"]');
+
+    const syncPriceInputState = () => {
+      if (
+        priceTypeInput instanceof HTMLSelectElement &&
+        priceInput instanceof HTMLInputElement
+      ) {
+        const isConsultation = priceTypeInput.value === "consultation";
+        priceInput.disabled = isConsultation;
+        priceInput.value = isConsultation ? "" : priceInput.value || "0";
+      }
+    };
+
+    if (priceTypeInput instanceof HTMLSelectElement) {
+      priceTypeInput.addEventListener("change", syncPriceInputState);
+      syncPriceInputState();
+    }
+
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
 
@@ -309,11 +328,19 @@ const slug = Astro.params.slug ?? "";
       const payload = {
         title: String(formData.get("title") ?? "").trim(),
         propertyType: String(formData.get("propertyType") ?? "house"),
-        transactionType: String(formData.get("transactionType") ?? "sale"),
+        transactionType: String(formData.get("transactionType") ?? "seller"),
+
+        propertyNumber: String(formData.get("propertyNumber") ?? "").trim(),
+
+        priceType: String(formData.get("priceType") ?? "fixed"),
+
+        price:
+          String(formData.get("priceType")) === "consultation"
+            ? null
+            : Number(formData.get("price") ?? 0),
         prefecture: String(formData.get("prefecture") ?? "").trim(),
         city: String(formData.get("city") ?? "").trim(),
         address: String(formData.get("address") ?? "").trim(),
-        price: Number(formData.get("price") ?? 0),
         landAreaSqm: toNullableNumber(formData.get("landAreaSqm")),
         buildingAreaSqm: toNullableNumber(formData.get("buildingAreaSqm")),
         layout: String(formData.get("layout") ?? "").trim() || null,
@@ -324,6 +351,21 @@ const slug = Astro.params.slug ?? "";
         latitude: toNullableNumber(formData.get("latitude")),
         longitude: toNullableNumber(formData.get("longitude")),
         status: String(formData.get("status") ?? "draft"),
+        landCategory: String(formData.get("landCategory") ?? "").trim() || null,
+        cityPlanningArea: String(formData.get("cityPlanningArea") ?? "").trim() || null,
+        zoningDistrict: String(formData.get("zoningDistrict") ?? "").trim() || null,
+        buildingCoverageRatio: toNullableNumber(formData.get("buildingCoverageRatio")),
+        floorAreaRatio: toNullableNumber(formData.get("floorAreaRatio")),
+        roadAccess: String(formData.get("roadAccess") ?? "").trim() || null,
+
+        buildingStructure: String(formData.get("buildingStructure") ?? "").trim() || null,
+        buildingFloors: String(formData.get("buildingFloors") ?? "").trim() || null,
+        parking: String(formData.get("parking") ?? "").trim() || null,
+
+        currentStatus: String(formData.get("currentStatus") ?? "").trim() || null,
+        handoverTiming: String(formData.get("handoverTiming") ?? "").trim() || null,
+        facilities: String(formData.get("facilities") ?? "").trim() || null,
+        remarks: String(formData.get("remarks") ?? "").trim() || null,
         featureIds,
       };
 
@@ -336,6 +378,7 @@ const slug = Astro.params.slug ?? "";
           ["市区町村", payload.city],
           ["住所", payload.address],
           ["説明文", payload.description],
+          ["物件番号", payload.propertyNumber],
         ];
 
         const missingField = requiredFields.find(([, value]) => !value);
@@ -344,8 +387,14 @@ const slug = Astro.params.slug ?? "";
           throw new Error(`${missingField[0]}を入力してください。`);
         }
 
-        if (!Number.isInteger(payload.price) || payload.price < 0) {
-          throw new Error("価格は0以上の整数で入力してください。");
+        if (payload.priceType === "fixed") {
+          if (
+            payload.price === null ||
+            !Number.isInteger(payload.price) ||
+            payload.price < 0
+          ) {
+            throw new Error("価格は0以上の整数で入力してください。");
+          }
         }
 
         if (
@@ -619,8 +668,22 @@ const slug = Astro.params.slug ?? "";
 
         <div class="admin-form-grid">
           <div class="admin-form-field">
-            <label>識別子（slug）</label>
-            <input type="text" value="${inputValue(item.slug)}" disabled />
+            <label>物件番号</label>
+            <input
+              type="text"
+              name="propertyNumber"
+              value="${inputValue(item.propertyNumber)}"
+              required
+            />
+          </div>
+
+          <div class="admin-form-field">
+            <label>URL識別子（slug）</label>
+            <input
+              type="text"
+              value="${inputValue(item.slug)}"
+              disabled
+            />
           </div>
 
           <div class="admin-form-field admin-form-field--full">
@@ -653,7 +716,13 @@ const slug = Astro.params.slug ?? "";
           <div class="admin-form-field">
             <label>取引種別</label>
             <select name="transactionType" required>
-              <option value="sale" ${item.transactionType === "sale" ? "selected" : ""}>売買</option>
+              <option value="seller" ${item.transactionType === "seller" ? "selected" : ""}>
+                売主
+              </option>
+
+              <option value="brokerage" ${item.transactionType === "brokerage" ? "selected" : ""}>
+                仲介
+              </option>
             </select>
           </div>
 
@@ -673,8 +742,35 @@ const slug = Astro.params.slug ?? "";
           </div>
 
           <div class="admin-form-field">
+            <label>価格表示</label>
+
+            <select name="priceType" required>
+              <option
+                value="fixed"
+                ${item.priceType === "fixed" ? "selected" : ""}
+              >
+                価格表示
+              </option>
+
+              <option
+                value="consultation"
+                ${item.priceType === "consultation" ? "selected" : ""}
+              >
+                ご相談
+              </option>
+            </select>
+          </div>
+
+          <div class="admin-form-field">
             <label>価格</label>
-            <input type="number" name="price" value="${numberValue(item.price)}" min="0" step="1" required />
+
+            <input
+              type="number"
+              name="price"
+              value="${numberValue(item.price)}"
+              min="0"
+              step="1"
+            />
           </div>
 
           <div class="admin-form-field">
@@ -731,6 +827,95 @@ const slug = Astro.params.slug ?? "";
               Google Mapsで右クリックしてコピーした座標をそのまま貼り付けできます。
             </p>
             <p id="coordinatePasteMessage" class="field-help coordinate-message"></p>
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <h2 class="admin-card__title">土地詳細</h2>
+          </div>
+
+          <div class="admin-form-field">
+            <label>地目</label>
+            <input type="text" name="landCategory" value="${inputValue(item.landCategory)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>都市計画区域</label>
+            <input type="text" name="cityPlanningArea" value="${inputValue(item.cityPlanningArea)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>用途地域</label>
+            <input type="text" name="zoningDistrict" value="${inputValue(item.zoningDistrict)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>建ぺい率（%）</label>
+            <input
+              type="number"
+              name="buildingCoverageRatio"
+              value="${numberValue(item.buildingCoverageRatio)}"
+              min="0"
+              step="0.01"
+            />
+          </div>
+
+          <div class="admin-form-field">
+            <label>容積率（%）</label>
+            <input
+              type="number"
+              name="floorAreaRatio"
+              value="${numberValue(item.floorAreaRatio)}"
+              min="0"
+              step="0.01"
+            />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>接道状況</label>
+            <input type="text" name="roadAccess" value="${inputValue(item.roadAccess)}" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <h2 class="admin-card__title">建物詳細</h2>
+          </div>
+
+          <div class="admin-form-field">
+            <label>建物構造</label>
+            <input type="text" name="buildingStructure" value="${inputValue(item.buildingStructure)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>階数</label>
+            <input type="text" name="buildingFloors" value="${inputValue(item.buildingFloors)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>駐車場</label>
+            <input type="text" name="parking" value="${inputValue(item.parking)}" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <h2 class="admin-card__title">共通詳細</h2>
+          </div>
+
+          <div class="admin-form-field">
+            <label>現況</label>
+            <input type="text" name="currentStatus" value="${inputValue(item.currentStatus)}" />
+          </div>
+
+          <div class="admin-form-field">
+            <label>引渡時期</label>
+            <input type="text" name="handoverTiming" value="${inputValue(item.handoverTiming)}" />
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>設備</label>
+            <textarea rows="3" name="facilities">${inputValue(item.facilities)}</textarea>
+          </div>
+
+          <div class="admin-form-field admin-form-field--full">
+            <label>備考</label>
+            <textarea rows="3" name="remarks">${inputValue(item.remarks)}</textarea>
           </div>
 
           <div class="admin-form-field admin-form-field--full">

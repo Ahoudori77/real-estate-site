@@ -41,7 +41,9 @@ export type AdminPropertyDetail = {
   prefecture: string;
   city: string;
   address: string;
-  price: number;
+  price?: number | null;  
+  priceType?: string;
+  propertyNumber?: string;
   landAreaSqm?: number | null;
   buildingAreaSqm?: number | null;
   layout?: string | null;

@@ -39,8 +39,16 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     };
   };
 
-  const formatPrice = (value) => {
-    if (value === null || value === undefined || Number.isNaN(Number(value))) {
+  const formatPrice = (item) => {
+    if (item?.priceType === "consultation") {
+      return "ご相談";
+    }
+
+    if (
+      item?.price === null ||
+      item?.price === undefined ||
+      Number.isNaN(Number(item.price))
+    ) {
       return "-";
     }
 
@@ -48,7 +56,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       style: "currency",
       currency: "JPY",
       maximumFractionDigits: 0,
-    }).format(Number(value));
+    }).format(Number(item.price));
   };
 
   const getStatusLabel = (status) => {
@@ -200,7 +208,9 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                       <td>
                         <div class="admin-cell-title">
                           <span class="admin-cell-main">${escapeHtml(item.title ?? "-")}</span>
-                          <span class="admin-inline-text-muted">slug: ${escapeHtml(item.slug ?? "-")}</span>
+                          <span class="admin-inline-text-muted">
+                            物件番号: ${escapeHtml(item.propertyNumber ?? "-")}
+                          </span>
                         </div>
                       </td>
 
@@ -217,7 +227,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                         ${item.city ? ` / ${escapeHtml(item.city)}` : ""}
                       </td>
 
-                      <td>${escapeHtml(formatPrice(item.price))}</td>
+                      <td>${escapeHtml(formatPrice(item))}</td>
 
                       <td>${escapeHtml(formatDateTime(item.publishedAt))}</td>
 
