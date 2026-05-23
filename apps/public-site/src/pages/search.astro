@@ -3,7 +3,6 @@ export const prerender = false;
 
 import SearchForm from "../components/search/SearchForm.astro";
 import PublicSiteLayout from "../layouts/PublicSiteLayout.astro";
-import { getPublicFeatureOptions } from "../lib/api/features";
 import {
   normalizePropertySearchParams,
   parsePropertySearchParams,
@@ -14,12 +13,11 @@ const initialValues = normalizePropertySearchParams(
   parsePropertySearchParams(searchParams),
 );
 
-const featureOptions = await getPublicFeatureOptions();
 ---
 
 <PublicSiteLayout
   title="物件検索 | 不動産サイト"
-  description="土地・戸建ての条件検索ページです。エリアや価格、面積などから物件を探せます。"
+  description="土地・戸建ての条件検索ページです。エリアや種別、間取りなどから物件を探せます。"
 >
   <div class="search-page">
     <section class="search-hero">
@@ -28,7 +26,7 @@ const featureOptions = await getPublicFeatureOptions();
           <p class="search-hero__eyebrow">PROPERTY SEARCH</p>
           <h1 class="search-hero__title">物件を探す</h1>
           <p class="search-hero__lead">
-            エリア・価格・面積などの条件から、希望に近い土地や戸建てを検索できます。
+            エリア・種別・間取りなどの条件から、希望に近い土地や戸建てを検索できます。
           </p>
         </div>
       </div>
@@ -41,11 +39,10 @@ const featureOptions = await getPublicFeatureOptions();
             <p class="search-panel__eyebrow">SEARCH CONDITION</p>
             <h2>検索条件を入力</h2>
             <p>
-              土地・戸建ての種別やエリア、価格帯などを指定して物件を探せます。
+              土地・戸建ての種別やエリア、間取りなどを指定して物件を探せます。
             </p>
           </div>
-
-          <SearchForm initialValues={initialValues} featureOptions={featureOptions} />
+          <SearchForm initialValues={initialValues} />
         </div>
       </div>
     </section>

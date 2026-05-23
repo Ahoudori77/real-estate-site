@@ -1,21 +1,18 @@
 ---
 import { areaOptions } from "../../data/mock/areas";
 import { normalizePropertySearchParams } from "../../lib/search/query";
-import type { PublicFeatureOption } from "../../lib/api/features";
 import type { PropertySearchParams } from "../../types/search";
 
 interface Props {
   initialValues?: PropertySearchParams;
-  featureOptions?: PublicFeatureOption[];
 }
 
-const { initialValues = {}, featureOptions = [] } = Astro.props;
+const { initialValues = {} } = Astro.props;
 const values = normalizePropertySearchParams(initialValues);
 
 const selectedType = values.type ?? "";
 const selectedPrefecture = values.prefecture ?? "";
 const selectedCity = values.city ?? "";
-const selectedFeatures = values.features ?? [];
 
 const citiesForSelectedPrefecture =
   areaOptions.find((area) => area.prefecture === selectedPrefecture)?.cities ?? [];
@@ -64,90 +61,6 @@ const areaMap = Object.fromEntries(
     </div>
 
     <div class="form-group">
-      <label for="priceMin">価格（下限）</label>
-      <input
-        id="priceMin"
-        name="priceMin"
-        type="number"
-        inputmode="numeric"
-        min="0"
-        step="1"
-        value={values.priceMin ?? ""}
-        placeholder="例: 20000000"
-      />
-    </div>
-
-    <div class="form-group">
-      <label for="priceMax">価格（上限）</label>
-      <input
-        id="priceMax"
-        name="priceMax"
-        type="number"
-        inputmode="numeric"
-        min="0"
-        step="1"
-        value={values.priceMax ?? ""}
-        placeholder="例: 50000000"
-      />
-    </div>
-
-    <div class="form-group">
-      <label for="landAreaMin">土地面積（下限㎡）</label>
-      <input
-        id="landAreaMin"
-        name="landAreaMin"
-        type="number"
-        inputmode="decimal"
-        min="0"
-        step="0.01"
-        value={values.landAreaMin ?? ""}
-        placeholder="例: 80"
-      />
-    </div>
-
-    <div class="form-group">
-      <label for="landAreaMax">土地面積（上限㎡）</label>
-      <input
-        id="landAreaMax"
-        name="landAreaMax"
-        type="number"
-        inputmode="decimal"
-        min="0"
-        step="0.01"
-        value={values.landAreaMax ?? ""}
-        placeholder="例: 150"
-      />
-    </div>
-
-    <div class="form-group">
-      <label for="buildingAreaMin">建物面積（下限㎡）</label>
-      <input
-        id="buildingAreaMin"
-        name="buildingAreaMin"
-        type="number"
-        inputmode="decimal"
-        min="0"
-        step="0.01"
-        value={values.buildingAreaMin ?? ""}
-        placeholder="例: 70"
-      />
-    </div>
-
-    <div class="form-group">
-      <label for="buildingAreaMax">建物面積（上限㎡）</label>
-      <input
-        id="buildingAreaMax"
-        name="buildingAreaMax"
-        type="number"
-        inputmode="decimal"
-        min="0"
-        step="0.01"
-        value={values.buildingAreaMax ?? ""}
-        placeholder="例: 120"
-      />
-    </div>
-
-    <div class="form-group">
       <label for="floorPlan">間取り</label>
       <input
         id="floorPlan"
@@ -158,30 +71,6 @@ const areaMap = Object.fromEntries(
       />
     </div>
   </div>
-
-  <fieldset class="feature-group">
-    <legend>こだわり条件</legend>
-    <div class="feature-options">
-      {featureOptions.length > 0 ? (
-        featureOptions.map((feature) => (
-          <label class="feature-option">
-            <input
-              type="checkbox"
-              name="features"
-              value={feature.slug}
-              checked={
-                selectedFeatures.includes(feature.slug) ||
-                selectedFeatures.includes(feature.name)
-              }
-            />
-            <span>{feature.name}</span>
-          </label>
-        ))
-      ) : (
-        <p class="muted">こだわり条件を取得できませんでした。</p>
-      )}
-    </div>
-  </fieldset>
 
   <div class="actions">
     <button type="submit" class="btn btn-primary">検索する</button>
@@ -248,27 +137,27 @@ const areaMap = Object.fromEntries(
 
     updateCityOptions(selectedPrefecture, selectedCity);
 
-    setValue("#priceMin", params.get("priceMin") ?? "");
-    setValue("#priceMax", params.get("priceMax") ?? "");
-    setValue("#landAreaMin", params.get("landAreaMin") ?? "");
-    setValue("#landAreaMax", params.get("landAreaMax") ?? "");
-    setValue("#buildingAreaMin", params.get("buildingAreaMin") ?? "");
-    setValue("#buildingAreaMax", params.get("buildingAreaMax") ?? "");
     setValue("#floorPlan", params.get("floorPlan") ?? "");
 
-    const featureValues = params
-      .getAll("features")
-      .flatMap((value) => value.split(","))
-      .map((value) => value.trim())
-      .filter(Boolean);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
 
-    form
-      .querySelectorAll('input[name="features"]')
-      .forEach((checkbox) => {
-        if (checkbox instanceof HTMLInputElement) {
-          checkbox.checked = featureValues.includes(checkbox.value);
+      const formData = new FormData(form);
+      const nextParams = new URLSearchParams();
+
+      ["type", "prefecture", "city", "floorPlan"].forEach((key) => {
+        const value = String(formData.get(key) ?? "").trim();
+
+        if (value !== "") {
+          nextParams.set(key, value);
         }
       });
+
+      const queryString = nextParams.toString();
+      window.location.href = queryString
+        ? `/properties?${queryString}`
+        : "/properties";
+    });
 
     if (prefectureSelect instanceof HTMLSelectElement) {
       prefectureSelect.addEventListener("change", () => {
@@ -295,8 +184,7 @@ const areaMap = Object.fromEntries(
     gap: 8px;
   }
 
-  .form-group label,
-  .feature-group legend {
+  .form-group label {
     font-weight: 700;
   }
 
@@ -314,38 +202,6 @@ const areaMap = Object.fromEntries(
   .form-group select:focus {
     outline: 3px solid var(--color-accent-soft, #fff1ed);
     border-color: var(--color-accent, #ff6347);
-  }
-
-  .feature-group {
-    border: 1px solid var(--color-border, #eadbd5);
-    border-radius: 16px;
-    padding: 18px;
-    background: #fffaf7;
-  }
-
-  .feature-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 12px;
-  }
-
-  .feature-option {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border: 1px solid var(--color-border, #eadbd5);
-    border-radius: 999px;
-    background: #fff;
-    font-weight: 700;
-    transition: 0.2s ease;
-  }
-
-  .feature-option:hover {
-    border-color: var(--color-accent, #ff6347);
-    background: var(--color-accent-soft, #fff1ed);
-    color: var(--color-accent-dark, #d94832);
   }
 
   .actions {

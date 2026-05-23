@@ -21,10 +21,8 @@ const hyogoAreas = [
 const conditionLinks = [
   { name: "土地", href: "/properties?type=land" },
   { name: "戸建て", href: "/properties?type=house" },
-  { name: "3,000万円以下", href: "/properties?priceMax=30000000" },
-  { name: "2,000万円以下", href: "/properties?priceMax=20000000" },
-  { name: "土地面積100㎡以上", href: "/properties?landAreaMin=100" },
-  { name: "建物面積80㎡以上", href: "/properties?buildingAreaMin=80" },
+  { name: "京都府の物件", href: "/properties?prefecture=京都府" },
+  { name: "兵庫県の物件", href: "/properties?prefecture=兵庫県" },
 ];
 ---
 
@@ -71,7 +69,7 @@ const conditionLinks = [
           <p class="quick-search-eyebrow">CONDITION</p>
           <h3>条件で探す</h3>
           <p>
-            土地・戸建ての種別や価格帯から、希望に近い物件へ絞り込めます。
+            土地・戸建ての種別やエリアから、希望に近い物件へ絞り込めます。
           </p>
         </div>
 
@@ -83,7 +81,7 @@ const conditionLinks = [
 
         <div class="quick-search-note">
           <p>
-            細かな条件で探したい場合は、検索ページから面積や特徴も指定できます。
+            細かな条件で探したい場合は、検索ページからエリアや特徴も指定できます。
           </p>
           <a href="/search">詳しく検索する</a>
         </div>
