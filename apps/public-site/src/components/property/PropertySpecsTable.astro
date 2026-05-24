@@ -3,7 +3,11 @@ import type { PropertyDetail } from "../../types/property";
 import {
   formatArea,
   formatJapaneseDate,
+  formatPercent,
+  formatPropertyPrice,
   formatPropertyTypeLabel,
+  formatText,
+  formatTransactionTypeLabel,
 } from "../../lib/utils/format";
 
 interface Props {
@@ -11,6 +15,17 @@ interface Props {
 }
 
 const { property } = Astro.props;
+
+type SpecRow =
+  | {
+      type: "section";
+      label: string;
+    }
+  | {
+      type: "item";
+      label: string;
+      value: string;
+    };
 
 type PropertyLocationShape = {
   prefecture?: string;
@@ -20,17 +35,6 @@ type PropertyLocationShape = {
   nearestStation?: string;
   accessNote?: string;
 };
-
-type ExtendedPropertyDetail = PropertyDetail & {
-  transactionType?: string;
-  buildingYear?: number;
-  builtYear?: number;
-  buildingMonth?: number;
-  builtMonth?: number;
-  updatedAt?: string;
-};
-
-const detail = property as ExtendedPropertyDetail;
 
 const location: PropertyLocationShape =
   (property as { location?: PropertyLocationShape }).location ?? {};
@@ -49,8 +53,15 @@ const addressText =
     .filter(Boolean)
     .join("") || "-";
 
-const buildingYear = detail.buildingYear ?? detail.builtYear;
-const buildingMonth = detail.buildingMonth ?? detail.builtMonth;
+const buildingYear =
+  property.type === "house"
+    ? property.builtYear ?? property.buildingYear
+    : null;
+
+const buildingMonth =
+  property.type === "house"
+    ? property.builtMonth ?? property.buildingMonth
+    : null;
 
 const builtText = buildingYear
   ? buildingMonth
@@ -58,82 +69,159 @@ const builtText = buildingYear
     : `${buildingYear}年`
   : "-";
 
-const formatPrice = (price?: number) => {
-  if (price === undefined || price === null) return "-";
-  return `${Math.round(price / 10000).toLocaleString()}万円`;
-};
-
-const formatTransactionType = (value?: string) => {
-  switch (value) {
-    case "sale":
-      return "売買";
-    case "rent":
-      return "賃貸";
-    case "seller":
-      return "売主";
-    case "agency":
-      return "代理";
-    case "brokerage":
-    case "mediation":
-      return "媒介";
-    default:
-      return value ?? "-";
+const formatParking = (value?: string | boolean | null) => {
+  if (typeof value === "boolean") {
+    return value ? "あり" : "なし";
   }
+
+  return formatText(value);
 };
 
-const commonRows = [
+const landUseZoneText =
+  property.zoningDistrict ?? property.landUseZone ?? null;
+
+const rows: SpecRow[] = [
   {
+    type: "section",
+    label: "基本情報",
+  },
+  {
+    type: "item",
+    label: "物件番号",
+    value: formatText(property.propertyNumber),
+  },
+  {
+    type: "item",
     label: "物件種別",
     value: formatPropertyTypeLabel(property.type),
   },
   {
-    label: "価格",
-    value: formatPrice(property.price),
+    type: "item",
+    label: "取引種別",
+    value: formatTransactionTypeLabel(property.transactionType),
   },
   {
+    type: "item",
+    label: "価格",
+    value: formatPropertyPrice(property.price, property.priceType),
+  },
+  {
+    type: "item",
     label: "所在地",
     value: addressText,
   },
   {
+    type: "item",
     label: "アクセス情報",
     value: accessText || "-",
   },
   {
-    label: "土地面積",
-    value: formatArea(detail.landAreaSqm),
+    type: "section",
+    label: "土地情報",
   },
-];
-
-const typeSpecificRows =
-  property.type === "house"
+  {
+    type: "item",
+    label: "土地面積",
+    value: formatArea(property.landAreaSqm),
+  },
+  {
+    type: "item",
+    label: "地目",
+    value: formatText(property.landCategory),
+  },
+  {
+    type: "item",
+    label: "都市計画",
+    value: formatText(property.cityPlanningArea),
+  },
+  {
+    type: "item",
+    label: "用途地域",
+    value: formatText(landUseZoneText),
+  },
+  {
+    type: "item",
+    label: "建ぺい率",
+    value: formatPercent(property.buildingCoverageRatio),
+  },
+  {
+    type: "item",
+    label: "容積率",
+    value: formatPercent(property.floorAreaRatio),
+  },
+  {
+    type: "item",
+    label: "接道",
+    value: formatText(property.roadAccess),
+  },
+  ...(property.type === "house"
     ? [
         {
+          type: "section" as const,
+          label: "建物情報",
+        },
+        {
+          type: "item" as const,
           label: "建物面積",
-          value: formatArea(detail.buildingAreaSqm),
+          value: formatArea(property.buildingAreaSqm),
         },
         {
+          type: "item" as const,
           label: "間取り",
-          value: detail.floorPlan ?? "-",
+          value: formatText(property.floorPlan),
         },
         {
-          label: "築年",
+          type: "item" as const,
+          label: "築年月",
           value: builtText,
         },
+        {
+          type: "item" as const,
+          label: "構造",
+          value: formatText(property.buildingStructure ?? property.structure),
+        },
+        {
+          type: "item" as const,
+          label: "階数",
+          value: formatText(property.buildingFloors),
+        },
+        {
+          type: "item" as const,
+          label: "駐車場",
+          value: formatParking(property.parking),
+        },
       ]
-    : [];
-
-const footerRows = [
+    : []),
   {
-    label: "取引種別",
-    value: formatTransactionType(detail.transactionType),
+    type: "section",
+    label: "その他",
   },
   {
+    type: "item",
+    label: "現況",
+    value: formatText(property.currentStatus),
+  },
+  {
+    type: "item",
+    label: "引渡時期",
+    value: formatText(property.handoverTiming),
+  },
+  {
+    type: "item",
+    label: "設備",
+    value: formatText(property.facilities),
+  },
+  {
+    type: "item",
+    label: "備考",
+    value: formatText(property.remarks),
+  },
+  {
+    type: "item",
     label: "更新日",
-    value: detail.updatedAt ? formatJapaneseDate(detail.updatedAt) : "-",
+    value: property.updatedAt ? formatJapaneseDate(property.updatedAt) : "-",
   },
 ];
-
-const rows = [...commonRows, ...typeSpecificRows, ...footerRows];
 ---
 
 <section class="specs">
@@ -145,12 +233,18 @@ const rows = [...commonRows, ...typeSpecificRows, ...footerRows];
   <div class="table-wrap">
     <table>
       <tbody>
-        {rows.map((row) => (
-          <tr>
-            <th>{row.label}</th>
-            <td>{row.value}</td>
-          </tr>
-        ))}
+        {rows.map((row) =>
+          row.type === "section" ? (
+            <tr class="section-row">
+              <th colspan="2">{row.label}</th>
+            </tr>
+          ) : (
+            <tr>
+              <th>{row.label}</th>
+              <td>{row.value}</td>
+            </tr>
+          )
+        )}
       </tbody>
     </table>
   </div>
@@ -208,6 +302,17 @@ const rows = [...commonRows, ...typeSpecificRows, ...footerRows];
 
   td {
     color: #111827;
+    line-height: 1.8;
+    white-space: pre-wrap;
+  }
+
+  .section-row th {
+    width: auto;
+    background: var(--color-accent-pale);
+    color: var(--color-accent-dark);
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
   }
 
   @media (max-width: 768px) {
@@ -224,6 +329,12 @@ const rows = [...commonRows, ...typeSpecificRows, ...footerRows];
 
     td {
       padding-top: 0;
+    }
+
+    .section-row th {
+      display: block;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 14px 18px;
     }
   }
 </style>

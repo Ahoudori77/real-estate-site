@@ -4,7 +4,7 @@ import {
   formatAddress,
   formatArea,
   formatJapaneseDate,
-  formatPriceToManYen,
+  formatPropertyPrice,
   formatPropertyTypeLabel,
 } from "../../lib/utils/format";
 
@@ -58,7 +58,7 @@ const { items } = Astro.props;
             </h3>
 
             <p class="related-price">
-              {formatPriceToManYen(property.price)}
+              {formatPropertyPrice(property.price, property.priceType)}
             </p>
 
             <dl class="related-meta">

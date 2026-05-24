@@ -4,7 +4,7 @@ import {
   formatAddress,
   formatArea,
   formatJapaneseDate,
-  formatPriceToManYen,
+  formatPropertyPrice,
   formatPropertyTypeLabel,
 } from "../../lib/utils/format";
 
@@ -40,7 +40,11 @@ const safeFeatures = property.features ?? [];
       <a href={`/properties/${property.slug}`}>{property.title}</a>
     </h3>
 
-    <p class="price">{formatPriceToManYen(property.price)}</p>
+    {property.propertyNumber && (
+      <p class="property-number">物件番号: {property.propertyNumber}</p>
+    )}
+
+    <p class="price">{formatPropertyPrice(property.price, property.priceType)}</p>
 
     <dl class="meta-list">
       <div>
@@ -187,6 +191,13 @@ const safeFeatures = property.features ?? [];
 
   .title a:hover {
     color: var(--color-accent-dark);
+  }
+
+  .property-number {
+    margin: -6px 0 0;
+    color: var(--color-muted);
+    font-size: 13px;
+    font-weight: 800;
   }
 
   .price {

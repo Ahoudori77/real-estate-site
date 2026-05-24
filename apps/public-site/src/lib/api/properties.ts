@@ -1,6 +1,9 @@
 import type {
   PropertyDetail,
   PropertyListItem,
+  PropertyPriceType,
+  PropertyStatus,
+  PropertyTransactionType,
 } from "../../types/property";
 import type {
   PropertySearchParams,
@@ -119,6 +122,54 @@ const normalizeType = (value: unknown): "house" | "land" => {
   }
 
   return "house";
+};
+
+const normalizeStatus = (value: unknown): PropertyStatus => {
+  const raw = toStringValue(value)?.toLowerCase();
+
+  if (raw === "draft" || raw === "published" || raw === "archived") {
+    return raw;
+  }
+
+  return "published";
+};
+
+const normalizePriceType = (value: unknown): PropertyPriceType => {
+  const raw = toStringValue(value)?.toLowerCase();
+
+  if (raw === "consultation") {
+    return "consultation";
+  }
+
+  return "fixed";
+};
+
+const normalizeTransactionType = (
+  value: unknown,
+): PropertyTransactionType | undefined => {
+  const raw = toStringValue(value)?.toLowerCase();
+
+  if (raw === "seller") {
+    return "seller";
+  }
+
+  if (raw === "brokerage" || raw === "mediation") {
+    return "brokerage";
+  }
+
+  return undefined;
+};
+
+const toNullableStringValue = (value: unknown): string | null => {
+  return toStringValue(value) ?? null;
+};
+
+const getSortablePrice = (property: Pick<PropertyListItem, "price" | "priceType">) => {
+  if (property.priceType === "consultation" || property.price === null) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return property.price;
 };
 
 const normalizeFeatureName = (value: unknown): string | undefined => {
@@ -267,9 +318,16 @@ const normalizePropertyListItem = (value: unknown): PropertyListItem => {
   return {
     id: toStringValue(raw.id) ?? "",
     slug: toStringValue(raw.slug) ?? "",
+    propertyNumber:
+      toStringValue(raw.propertyNumber) ??
+      toStringValue(raw.property_number),
     type: normalizeType(raw.type ?? raw.propertyType ?? raw.property_type),
     title: toStringValue(raw.title) ?? "物件名未設定",
-    price: toNumberValue(raw.price) ?? 0,
+    priceType: normalizePriceType(raw.priceType ?? raw.price_type),
+    price: toNumberValue(raw.price) ?? null,
+    transactionType: normalizeTransactionType(
+      raw.transactionType ?? raw.transaction_type,
+    ),
     thumbnailUrl:
       toStringValue(raw.thumbnailUrl) ??
       toStringValue(raw.thumbnail_url) ??
@@ -285,14 +343,56 @@ const normalizePropertyListItem = (value: unknown): PropertyListItem => {
     landAreaSqm:
       toNumberValue(raw.landAreaSqm) ??
       toNumberValue(raw.land_area_sqm) ??
-      0,
+      null,
     buildingAreaSqm:
       toNumberValue(raw.buildingAreaSqm) ??
-      toNumberValue(raw.building_area_sqm),
+      toNumberValue(raw.building_area_sqm) ??
+      null,
     floorPlan:
       toStringValue(raw.floorPlan) ??
       toStringValue(raw.floor_plan) ??
-      toStringValue(raw.layout),
+      toStringValue(raw.layout) ??
+      null,
+    landCategory:
+      toNullableStringValue(raw.landCategory) ??
+      toNullableStringValue(raw.land_category),
+    cityPlanningArea:
+      toNullableStringValue(raw.cityPlanningArea) ??
+      toNullableStringValue(raw.city_planning_area),
+    zoningDistrict:
+      toNullableStringValue(raw.zoningDistrict) ??
+      toNullableStringValue(raw.zoning_district),
+    landUseZone:
+      toNullableStringValue(raw.landUseZone) ??
+      toNullableStringValue(raw.land_use_zone) ??
+      toNullableStringValue(raw.zoningDistrict) ??
+      toNullableStringValue(raw.zoning_district),
+    buildingCoverageRatio:
+      toNumberValue(raw.buildingCoverageRatio) ??
+      toNumberValue(raw.building_coverage_ratio) ??
+      null,
+    floorAreaRatio:
+      toNumberValue(raw.floorAreaRatio) ??
+      toNumberValue(raw.floor_area_ratio) ??
+      null,
+    roadAccess:
+      toNullableStringValue(raw.roadAccess) ??
+      toNullableStringValue(raw.road_access),
+    buildingStructure:
+      toNullableStringValue(raw.buildingStructure) ??
+      toNullableStringValue(raw.building_structure),
+    buildingFloors:
+      toNullableStringValue(raw.buildingFloors) ??
+      toNullableStringValue(raw.building_floors),
+    parking: toNullableStringValue(raw.parking),
+    currentStatus:
+      toNullableStringValue(raw.currentStatus) ??
+      toNullableStringValue(raw.current_status),
+    handoverTiming:
+      toNullableStringValue(raw.handoverTiming) ??
+      toNullableStringValue(raw.handover_timing),
+    facilities: toNullableStringValue(raw.facilities),
+    remarks: toNullableStringValue(raw.remarks),
     features,
     updatedAt:
       toStringValue(raw.updatedAt) ??
@@ -302,7 +402,6 @@ const normalizePropertyListItem = (value: unknown): PropertyListItem => {
       "",
   };
 };
-
 const normalizePropertyDetail = (value: unknown): PropertyDetail => {
   const raw = isObject(value) ? value : {};
   const title = toStringValue(raw.title) ?? "物件名未設定";
@@ -316,45 +415,106 @@ const normalizePropertyDetail = (value: unknown): PropertyDetail => {
     getFirstImageUrl(raw.images);
 
   const images = normalizeImages(raw.images, title, fallbackImageUrl);
+  const type = normalizeType(raw.type ?? raw.propertyType ?? raw.property_type);
 
   return {
     id: toStringValue(raw.id) ?? "",
     slug: toStringValue(raw.slug) ?? "",
-    type: normalizeType(raw.type ?? raw.propertyType ?? raw.property_type),
-    status: toStringValue(raw.status) ?? "published",
+    propertyNumber:
+      toStringValue(raw.propertyNumber) ??
+      toStringValue(raw.property_number),
+    type,
+    status: normalizeStatus(raw.status),
     title,
-    price: toNumberValue(raw.price) ?? 0,
+    priceType: normalizePriceType(raw.priceType ?? raw.price_type),
+    price: toNumberValue(raw.price) ?? null,
+    transactionType: normalizeTransactionType(
+      raw.transactionType ?? raw.transaction_type,
+    ),
     description:
       toStringValue(raw.description) ?? "物件詳細はお問い合わせください。",
     location,
     landAreaSqm:
       toNumberValue(raw.landAreaSqm) ??
       toNumberValue(raw.land_area_sqm) ??
-      0,
+      null,
     buildingAreaSqm:
       toNumberValue(raw.buildingAreaSqm) ??
-      toNumberValue(raw.building_area_sqm),
+      toNumberValue(raw.building_area_sqm) ??
+      null,
     floorPlan:
       toStringValue(raw.floorPlan) ??
       toStringValue(raw.floor_plan) ??
-      toStringValue(raw.layout),
+      toStringValue(raw.layout) ??
+      null,
     buildingYear:
       toNumberValue(raw.buildingYear) ??
       toNumberValue(raw.building_year) ??
       toNumberValue(raw.builtYear) ??
-      toNumberValue(raw.built_year),
-    parking: toBooleanValue(raw.parking),
-    structure: toStringValue(raw.structure),
+      toNumberValue(raw.built_year) ??
+      null,
+    buildingMonth:
+      toNumberValue(raw.buildingMonth) ??
+      toNumberValue(raw.building_month) ??
+      toNumberValue(raw.builtMonth) ??
+      toNumberValue(raw.built_month) ??
+      null,
+    builtYear:
+      toNumberValue(raw.builtYear) ??
+      toNumberValue(raw.built_year) ??
+      toNumberValue(raw.buildingYear) ??
+      toNumberValue(raw.building_year) ??
+      null,
+    builtMonth:
+      toNumberValue(raw.builtMonth) ??
+      toNumberValue(raw.built_month) ??
+      toNumberValue(raw.buildingMonth) ??
+      toNumberValue(raw.building_month) ??
+      null,
+    parking: toNullableStringValue(raw.parking),
+    structure:
+      toNullableStringValue(raw.structure) ??
+      toNullableStringValue(raw.buildingStructure) ??
+      toNullableStringValue(raw.building_structure),
+    landCategory:
+      toNullableStringValue(raw.landCategory) ??
+      toNullableStringValue(raw.land_category),
+    cityPlanningArea:
+      toNullableStringValue(raw.cityPlanningArea) ??
+      toNullableStringValue(raw.city_planning_area),
+    zoningDistrict:
+      toNullableStringValue(raw.zoningDistrict) ??
+      toNullableStringValue(raw.zoning_district),
+    landUseZone:
+      toNullableStringValue(raw.landUseZone) ??
+      toNullableStringValue(raw.land_use_zone) ??
+      toNullableStringValue(raw.zoningDistrict) ??
+      toNullableStringValue(raw.zoning_district),
     buildingCoverageRatio:
       toNumberValue(raw.buildingCoverageRatio) ??
-      toNumberValue(raw.building_coverage_ratio),
+      toNumberValue(raw.building_coverage_ratio) ??
+      null,
     floorAreaRatio:
       toNumberValue(raw.floorAreaRatio) ??
-      toNumberValue(raw.floor_area_ratio),
-    landUseZone:
-      toStringValue(raw.landUseZone) ?? toStringValue(raw.land_use_zone),
+      toNumberValue(raw.floor_area_ratio) ??
+      null,
     roadAccess:
-      toStringValue(raw.roadAccess) ?? toStringValue(raw.road_access),
+      toNullableStringValue(raw.roadAccess) ??
+      toNullableStringValue(raw.road_access),
+    buildingStructure:
+      toNullableStringValue(raw.buildingStructure) ??
+      toNullableStringValue(raw.building_structure),
+    buildingFloors:
+      toNullableStringValue(raw.buildingFloors) ??
+      toNullableStringValue(raw.building_floors),
+    currentStatus:
+      toNullableStringValue(raw.currentStatus) ??
+      toNullableStringValue(raw.current_status),
+    handoverTiming:
+      toNullableStringValue(raw.handoverTiming) ??
+      toNullableStringValue(raw.handover_timing),
+    facilities: toNullableStringValue(raw.facilities),
+    remarks: toNullableStringValue(raw.remarks),
     features,
     images,
     publishedAt:
@@ -406,32 +566,42 @@ const matchesSearchParams = (
   if (params.city && property.city !== params.city) {
     return false;
   }
-
-  if (params.priceMin !== undefined && property.price < params.priceMin) {
-    return false;
+  if (params.priceMin !== undefined) {
+    if (property.price === null || property.price < params.priceMin) {
+      return false;
+    }
   }
 
-  if (params.priceMax !== undefined && property.price > params.priceMax) {
-    return false;
+  if (params.priceMax !== undefined) {
+    if (property.price === null || property.price > params.priceMax) {
+      return false;
+    }
   }
 
-  if (
-    params.landAreaMin !== undefined &&
-    property.landAreaSqm < params.landAreaMin
-  ) {
-    return false;
+  if (params.landAreaMin !== undefined) {
+    if (
+      property.landAreaSqm === undefined ||
+      property.landAreaSqm === null ||
+      property.landAreaSqm < params.landAreaMin
+    ) {
+      return false;
+    }
   }
 
-  if (
-    params.landAreaMax !== undefined &&
-    property.landAreaSqm > params.landAreaMax
-  ) {
-    return false;
+  if (params.landAreaMax !== undefined) {
+    if (
+      property.landAreaSqm === undefined ||
+      property.landAreaSqm === null ||
+      property.landAreaSqm > params.landAreaMax
+    ) {
+      return false;
+    }
   }
 
   if (params.buildingAreaMin !== undefined) {
     if (
       property.buildingAreaSqm === undefined ||
+      property.buildingAreaSqm === null ||
       property.buildingAreaSqm < params.buildingAreaMin
     ) {
       return false;
@@ -441,6 +611,7 @@ const matchesSearchParams = (
   if (params.buildingAreaMax !== undefined) {
     if (
       property.buildingAreaSqm === undefined ||
+      property.buildingAreaSqm === null ||
       property.buildingAreaSqm > params.buildingAreaMax
     ) {
       return false;
@@ -474,19 +645,13 @@ const sortProperties = (
 
   switch (sort) {
     case "price_asc":
-      sorted.sort((a, b) => a.price - b.price);
+      sorted.sort((a, b) => getSortablePrice(a) - getSortablePrice(b));
       break;
 
     case "price_desc":
-      sorted.sort((a, b) => b.price - a.price);
-      break;
-
-    case "newest":
-    default:
-      sorted.sort((a, b) => getTimeValue(b.updatedAt) - getTimeValue(a.updatedAt));
+      sorted.sort((a, b) => getSortablePrice(b) - getSortablePrice(a));
       break;
   }
-
   return sorted;
 };
 

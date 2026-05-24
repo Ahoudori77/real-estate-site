@@ -14,7 +14,7 @@ import {
 } from "../../lib/api/properties";
 import {
   formatArea,
-  formatPriceToManYen,
+  formatPropertyPrice,
   formatPropertyTypeLabel,
 } from "../../lib/utils/format";
 
@@ -129,7 +129,7 @@ const mapEmbedUrl =
               </div>
 
               <h1>{property.title}</h1>
-              <p class="price">{formatPriceToManYen(property.price)}</p>
+              <p class="price">{formatPropertyPrice(property.price, property.priceType)}</p>
 
               <dl class="summary-list">
                 <div>
