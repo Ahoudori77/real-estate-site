@@ -1,7 +1,14 @@
 <header class="border-b border-slate-200 bg-white" data-site-header>
   <div class="container flex min-h-20 items-center justify-between gap-6 py-4">
-    <a href="/" class="text-lg font-bold text-[var(--color-primary)]">
-      みやび共栄土地株式会社
+    <a href="/" class="site-logo-link" aria-label="トップページへ戻る">
+      <img
+        src="/images/logo/miyabi-logo.svg"
+        alt="みやび共栄土地株式会社"
+        class="site-logo-image"
+        width="360"
+        height="72"
+        decoding="async"
+      />
     </a>
 
     <nav class="hidden gap-6 text-sm font-medium md:flex" aria-label="グローバルメニュー">
@@ -100,6 +107,21 @@
 </script>
 
 <style>
+  .site-logo-link {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    text-decoration: none;
+  }
+
+  .site-logo-image {
+    display: block;
+    width: min(56vw, 260px);
+    height: auto;
+    max-height: 52px;
+    object-fit: contain;
+  }
+
   .mobile-menu-link {
     display: block;
     border-radius: 14px;
@@ -111,5 +133,12 @@
   .mobile-menu-link:hover {
     background: #f9fafb;
     color: var(--color-primary);
+  }
+
+  @media (max-width: 767px) {
+    .site-logo-image {
+      width: min(58vw, 220px);
+      max-height: 44px;
+    }
   }
 </style>
