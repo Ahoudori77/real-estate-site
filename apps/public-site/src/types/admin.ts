@@ -24,6 +24,7 @@ export type AdminInquiryListItem = {
   id?: string;
   propertySlug?: string | null;
   propertyTitle?: string | null;
+  propertyNumber?: string | null;
   name?: string;
   email?: string;
   phone?: string | null;

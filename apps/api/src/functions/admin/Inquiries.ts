@@ -10,6 +10,7 @@ type InquiryRow = {
   id: number;
   property_slug: string | null;
   property_title: string | null;
+  property_number: string | null;
   name: string;
   email: string;
   phone: string | null;
@@ -50,7 +51,8 @@ function buildWhereClause(
         i.phone LIKE @q OR
         i.message LIKE @q OR
         p.title LIKE @q OR
-        p.slug LIKE @q
+        p.slug LIKE @q OR
+        p.property_number LIKE @q
       )
     `);
     request.input("q", sql.NVarChar(255), `%${filters.q}%`);
@@ -108,6 +110,7 @@ export async function adminInquiries(
         i.id,
         p.slug AS property_slug,
         p.title AS property_title,
+        p.property_number AS property_number,
         i.name,
         i.email,
         i.phone,
@@ -129,6 +132,7 @@ export async function adminInquiries(
           id: String(row.id),
           propertySlug: row.property_slug,
           propertyTitle: row.property_title,
+          propertyNumber: row.property_number,
           name: row.name,
           email: row.email,
           phone: row.phone,

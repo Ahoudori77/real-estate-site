@@ -48,8 +48,50 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   const getInquiryPhone = (item) =>
     item.phone ?? item.phoneNumber ?? "-";
 
-  const getInquiryProperty = (item) =>
-    item.propertyTitle ?? item.propertyName ?? item.propertySlug ?? "-";
+  const getInquiryProperty = (item) => {
+    const title = item.propertyTitle ?? item.propertyName ?? null;
+    const propertyNumber = item.propertyNumber ?? null;
+    const slug = item.propertySlug ?? null;
+
+    if (title && propertyNumber) {
+      return `${title}（物件番号: ${propertyNumber}）`;
+    }
+
+    if (title) {
+      return title;
+    }
+
+    if (propertyNumber) {
+      return `物件番号: ${propertyNumber}`;
+    }
+
+    return slug ?? "-";
+  };
+
+  const getInquiryPropertyUrl = (item) => {
+    const slug = String(item.propertySlug ?? "").trim();
+
+    if (!slug) {
+      return null;
+    }
+
+    return `/properties/${encodeURIComponent(slug)}`;
+  };
+
+  const renderInquiryProperty = (item) => {
+    const propertyText = getInquiryProperty(item);
+    const propertyUrl = getInquiryPropertyUrl(item);
+
+    if (propertyText === "-") {
+      return "物件: -";
+    }
+
+    if (!propertyUrl) {
+      return `物件: ${escapeHtml(propertyText)}`;
+    }
+
+    return `物件: <a href="${escapeHtml(propertyUrl)}" class="admin-inquiry-property-link" target="_blank" rel="noreferrer">${escapeHtml(propertyText)}</a>`;
+  };
 
   const getInquiryCreatedAt = (item) =>
     item.createdAt ?? item.inquiredAt ?? item.submittedAt ?? null;
@@ -116,7 +158,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
                           <div class="admin-badge-row">
                             <span class="admin-badge admin-badge--neutral">
-                              物件: ${escapeHtml(getInquiryProperty(item))}
+                              ${renderInquiryProperty(item)}
                             </span>
                           </div>
                         </div>
@@ -205,6 +247,17 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  :global(.admin-inquiry-property-link) {
+    color: #1d4ed8;
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  :global(.admin-inquiry-property-link:hover) {
+    color: #1e40af;
   }
 
   :global(.admin-inquiry-card__meta) {
