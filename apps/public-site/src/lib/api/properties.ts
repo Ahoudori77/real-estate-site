@@ -713,8 +713,13 @@ const fetchPropertyItemsForClientSideSearch = async (
 export const getProperties = async (
   params: PropertySearchParams = {},
 ): Promise<PropertySearchResult<PropertyListItem>> => {
-  const items = await fetchPropertyItemsForClientSideSearch(params);
-  return createSearchResultFromItems(items, params);
+  try {
+    const items = await fetchPropertyItemsForClientSideSearch(params);
+    return createSearchResultFromItems(items, params);
+  } catch (error) {
+    console.error("Failed to fetch public properties. Fallback to empty list.", error);
+    return createSearchResultFromItems([], params);
+  }
 };
 
 export const getPropertyBySlug = async (
