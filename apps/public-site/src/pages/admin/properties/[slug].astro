@@ -191,6 +191,21 @@ const slug = Astro.params.slug ?? "";
     return data;
   };
 
+  const requestFormData = async (path, formData) => {
+    const response = await fetch(buildAdminApiUrl(path), {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(data?.message ?? data?.error?.message ?? "アップロードに失敗しました。");
+    }
+
+    return data;
+  };
+
   const normalizeImages = (data) => {
     if (Array.isArray(data)) return data;
     if (Array.isArray(data?.items)) return data.items;
@@ -481,10 +496,14 @@ const slug = Astro.params.slug ?? "";
     if (!root) return;
 
     const manager = root.querySelector("[data-admin-image-manager]");
+    const uploadButton = root.querySelector("[data-admin-image-upload-button]");
+    const fileInput = root.querySelector("[data-admin-image-file]");
     const addButton = root.querySelector("[data-admin-image-add-button]");
     const imageList = root.querySelector("[data-admin-image-list]");
 
     if (!(manager instanceof HTMLElement)) return;
+    if (!(uploadButton instanceof HTMLButtonElement)) return;
+    if (!(fileInput instanceof HTMLInputElement)) return;
     if (!(addButton instanceof HTMLButtonElement)) return;
     if (!(imageList instanceof HTMLElement)) return;
 
@@ -494,6 +513,47 @@ const slug = Astro.params.slug ?? "";
           event.preventDefault();
         }
       });
+    });
+
+    uploadButton.addEventListener("click", async () => {
+      const imageUrlInput = root.querySelector("[data-admin-image-new-url]");
+
+      if (!(imageUrlInput instanceof HTMLInputElement)) return;
+
+      const file = fileInput.files?.[0];
+
+      if (!file) {
+        setImageMessage("アップロードする画像ファイルを選択してください。", "error");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      uploadButton.disabled = true;
+      uploadButton.textContent = "アップロード中...";
+      setImageMessage("画像をアップロードしています。", "info");
+
+      try {
+        const data = await requestFormData("/api/admin/property-images/upload", formData);
+        const imageUrl = data?.imageUrl;
+
+        if (!imageUrl || typeof imageUrl !== "string") {
+          throw new Error("アップロード後の画像URLを取得できませんでした。");
+        }
+
+        imageUrlInput.value = imageUrl;
+        setImageMessage("画像をアップロードしました。画像URL欄に反映済みです。", "success");
+      } catch (error) {
+        console.error("[admin property images] upload failed", error);
+        setImageMessage(
+          error instanceof Error ? error.message : "画像アップロードに失敗しました。",
+          "error",
+        );
+      } finally {
+        uploadButton.disabled = false;
+        uploadButton.textContent = "選択した画像をアップロード";
+      }
     });
 
     addButton.addEventListener("click", async () => {
@@ -948,16 +1008,26 @@ const slug = Astro.params.slug ?? "";
         <div class="admin-section__panel" style="margin-top: 24px;" data-admin-image-manager>
           <h2 class="admin-card__title">画像管理</h2>
           <p class="admin-card__text">
-            画像URL、altテキスト、表示順を管理します。表示順が一番小さい画像をサムネイルとして扱います。
+            PCから画像をアップロードするか、画像URLを直接入力して管理します。表示順が一番小さい画像をサムネイルとして扱います。
           </p>
 
           <div class="admin-form-grid" style="margin-top: 16px;">
+            <div class="admin-form-field admin-form-field--full">
+              <label>画像ファイル</label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                data-admin-image-file
+              />
+              <p class="field-help">jpg / png / webp、5MB以下の画像をアップロードできます。</p>
+            </div>
+
             <div class="admin-form-field admin-form-field--full">
               <label>画像URL</label>
               <input
                 type="url"
                 data-admin-image-new-url
-                placeholder="https://example.com/image.jpg"
+                placeholder="画像アップロード後に自動入力されます"
               />
             </div>
 
@@ -981,6 +1051,10 @@ const slug = Astro.params.slug ?? "";
           </div>
 
           <div class="admin-form__actions" style="margin-top: 16px;">
+            <button type="button" class="admin-button admin-button--secondary" data-admin-image-upload-button>
+              選択した画像をアップロード
+            </button>
+
             <button type="button" class="admin-button" data-admin-image-add-button>
               画像を追加
             </button>
