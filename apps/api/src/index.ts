@@ -9,3 +9,4 @@ import "./functions/admin/PropertyBySlug";
 import "./functions/admin/PropertyUpdate";
 import "./functions/admin/Inquiries";
 import "./functions/admin/PropertyImages";
+import "./functions/admin/PropertyImageUploads";
