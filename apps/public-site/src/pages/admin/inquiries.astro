@@ -240,13 +240,18 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
   :global(.admin-inquiry-card .admin-badge-row) {
     justify-content: flex-end;
+    min-width: 0;
+    max-width: min(100%, 640px);
   }
 
   :global(.admin-inquiry-card .admin-badge) {
-    max-width: 360px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    max-width: 100%;
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   :global(.admin-inquiry-property-link) {
@@ -254,6 +259,8 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     font-weight: 800;
     text-decoration: underline;
     text-underline-offset: 3px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   :global(.admin-inquiry-property-link:hover) {
