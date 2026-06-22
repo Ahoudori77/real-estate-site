@@ -254,6 +254,24 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
+  const toAdminErrorMessage = (error, fallbackMessage) => {
+    const message = error instanceof Error ? error.message : fallbackMessage;
+
+    if (message.includes("The property number or slug is already in use.")) {
+      return "物件番号またはURL識別子はすでに使用されています。";
+    }
+
+    if (message.includes("The property number is already in use.")) {
+      return "物件番号はすでに使用されています。";
+    }
+
+    if (message.includes("price is required when priceType is fixed.")) {
+      return "価格種別が固定の場合は、1円以上の価格を入力してください。";
+    }
+
+    return message;
+  };
+
   const toNullableNumber = (value) => {
     if (value === "" || value === null || value === undefined) return null;
     const num = Number(value);
@@ -362,8 +380,10 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
 
         window.location.href = `/admin/properties/${encodeURIComponent(slug)}`;
       } catch (error) {
-        messageBox.textContent =
-          error instanceof Error ? error.message : "物件の作成に失敗しました。";
+        messageBox.textContent = toAdminErrorMessage(
+          error,
+          "物件の作成に失敗しました。",
+        );
         messageBox.className = "admin-error";
 
         createButton.disabled = false;
