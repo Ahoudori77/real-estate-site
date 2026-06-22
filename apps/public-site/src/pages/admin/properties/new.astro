@@ -286,6 +286,9 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
       messageBox.className = "admin-card__text";
 
       const formData = new FormData(form);
+      const priceType = String(formData.get("priceType") ?? "fixed");
+      const priceRaw = String(formData.get("price") ?? "").trim();
+      const price = priceType === "consultation" ? null : priceRaw === "" ? 0 : Number(priceRaw);
 
       const payload = {
         slug: normalizeSlug(formData.get("slug") ?? ""),
@@ -295,10 +298,7 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
         prefecture: String(formData.get("prefecture") ?? "").trim(),
         city: String(formData.get("city") ?? "").trim(),
         address: String(formData.get("address") ?? "").trim(),
-        price:
-          String(formData.get("priceType")) === "consultation"
-            ? null
-            : Number(formData.get("price") ?? 0),
+        price,
         landAreaSqm: toNullableNumber(formData.get("landAreaSqm")),
         buildingAreaSqm: toNullableNumber(formData.get("buildingAreaSqm")),
         layout: String(formData.get("layout") ?? "").trim() || null,
@@ -308,7 +308,7 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
         builtMonth: toNullableNumber(formData.get("builtMonth")),
         status: String(formData.get("status") ?? "draft"),
         propertyNumber: String(formData.get("propertyNumber") ?? "").trim(),
-        priceType: String(formData.get("priceType") ?? "fixed"),
+        priceType,
 
         landCategory: String(formData.get("landCategory") ?? "").trim() || null,
         cityPlanningArea: String(formData.get("cityPlanningArea") ?? "").trim() || null,
@@ -349,9 +349,9 @@ import AdminLayout from "../../../layouts/AdminLayout.astro";
           if (
             payload.price === null ||
             !Number.isInteger(payload.price) ||
-            payload.price < 0
+            payload.price <= 0
           ) {
-            throw new Error("価格は0以上の整数で入力してください。");
+            throw new Error("価格種別が固定の場合は、1円以上の価格を入力してください。");
           }
         }
         createButton.disabled = true;

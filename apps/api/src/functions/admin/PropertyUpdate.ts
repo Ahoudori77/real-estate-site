@@ -57,11 +57,14 @@ const patchManagementPropertySchema = z
     remarks: nullableStringSchema,
   })
   .superRefine((data, ctx) => {
-    if (data.priceType === "fixed" && (data.price === null || data.price === undefined)) {
+    if (
+      data.priceType === "fixed" &&
+      (data.price === null || data.price === undefined || data.price <= 0)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["price"],
-        message: "price is required when priceType is fixed.",
+        message: "価格種別が固定の場合は、1円以上の価格を入力してください。",
       });
     }
   });
@@ -399,7 +402,7 @@ export async function patchManagementPropertyBySlug(
       return {
         status: 409,
         jsonBody: {
-          message: "The property number is already in use.",
+          message: "物件番号はすでに使用されています。",
         },
       };
     }

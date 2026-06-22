@@ -335,6 +335,9 @@ const slug = Astro.params.slug ?? "";
       messageBox.className = "admin-card__text";
 
       const formData = new FormData(form);
+      const priceType = String(formData.get("priceType") ?? "fixed");
+      const priceRaw = String(formData.get("price") ?? "").trim();
+      const price = priceType === "consultation" ? null : priceRaw === "" ? 0 : Number(priceRaw);
 
       const featureIds = Array.from(
         form.querySelectorAll('input[name="featureIds"]:checked')
@@ -347,12 +350,8 @@ const slug = Astro.params.slug ?? "";
 
         propertyNumber: String(formData.get("propertyNumber") ?? "").trim(),
 
-        priceType: String(formData.get("priceType") ?? "fixed"),
-
-        price:
-          String(formData.get("priceType")) === "consultation"
-            ? null
-            : Number(formData.get("price") ?? 0),
+        priceType,
+        price,
         prefecture: String(formData.get("prefecture") ?? "").trim(),
         city: String(formData.get("city") ?? "").trim(),
         address: String(formData.get("address") ?? "").trim(),
@@ -406,9 +405,9 @@ const slug = Astro.params.slug ?? "";
           if (
             payload.price === null ||
             !Number.isInteger(payload.price) ||
-            payload.price < 0
+            payload.price <= 0
           ) {
-            throw new Error("価格は0以上の整数で入力してください。");
+            throw new Error("価格種別が固定の場合は、1円以上の価格を入力してください。");
           }
         }
 
