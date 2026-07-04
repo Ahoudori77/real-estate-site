@@ -101,6 +101,29 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     root.innerHTML = `<p class="admin-error">${escapeHtml(message)}</p>`;
   };
 
+  const deleteProperty = async (slug) => {
+    const response = await fetch(`/api/admin/properties/${encodeURIComponent(slug)}`, {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    let data = null;
+
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.message ?? "物件の削除に失敗しました。");
+    }
+
+    return data;
+  };
+
   const renderEmpty = () => {
     if (!root) return;
 
@@ -232,12 +255,24 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                       <td>${escapeHtml(formatDateTime(item.publishedAt))}</td>
 
                       <td>
-                        <a
-                          href="/admin/properties/${encodeURIComponent(item.slug ?? "")}"
-                          class="admin-link-button"
-                        >
-                          編集する
-                        </a>
+                        <div class="admin-property-actions">
+                          <a
+                            href="/admin/properties/${encodeURIComponent(item.slug ?? "")}"
+                            class="admin-link-button"
+                          >
+                            編集する
+                          </a>
+
+                          <button
+                            type="button"
+                            class="admin-danger-button"
+                            data-delete-property-slug="${escapeHtml(item.slug ?? "")}"
+                            data-delete-property-title="${escapeHtml(item.title ?? "対象の物件")}"
+                            data-delete-property-number="${escapeHtml(item.propertyNumber ?? "-")}"
+                          >
+                            削除する
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   `,
@@ -259,5 +294,83 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     }
   };
 
+  root?.addEventListener("click", async (event) => {
+    const target = event.target;
+
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const button = target.closest("[data-delete-property-slug]");
+
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    const slug = button.dataset.deletePropertySlug;
+    const title = button.dataset.deletePropertyTitle ?? "対象の物件";
+    const propertyNumber = button.dataset.deletePropertyNumber ?? "-";
+
+    if (!slug) {
+      window.alert("物件slugを取得できませんでした。");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `物件「${title}」を削除します。\n物件番号: ${propertyNumber}\n\nこの操作は取り消せません。よろしいですか？`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const originalLabel = button.textContent ?? "削除する";
+    button.disabled = true;
+    button.textContent = "削除中...";
+
+    try {
+      await deleteProperty(slug);
+      window.alert("物件を削除しました。");
+      await load();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "物件の削除に失敗しました。");
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  });
+
   void load();
 </script>
+
+<style>
+  :global(.admin-property-actions) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  :global(.admin-danger-button) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 7px 12px;
+    border: 1px solid #fecaca;
+    border-radius: 999px;
+    background: #fff1f2;
+    color: #b91c1c;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  :global(.admin-danger-button:hover) {
+    background: #ffe4e6;
+  }
+
+  :global(.admin-danger-button:disabled) {
+    cursor: wait;
+    opacity: 0.7;
+  }
+</style>

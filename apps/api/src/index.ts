@@ -7,6 +7,7 @@ import "./functions/admin/Features";
 import "./functions/admin/Properties";
 import "./functions/admin/PropertyBySlug";
 import "./functions/admin/PropertyUpdate";
+import "./functions/admin/PropertyDelete";
 import "./functions/admin/Inquiries";
 import "./functions/admin/InquiryDelete";
 import "./functions/admin/PropertyImages";
