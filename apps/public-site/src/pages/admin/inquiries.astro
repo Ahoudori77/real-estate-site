@@ -104,6 +104,29 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     root.innerHTML = `<p class="admin-error">${escapeHtml(message)}</p>`;
   };
 
+  const deleteInquiry = async (id) => {
+    const response = await fetch(`/api/admin/inquiries/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    let data = null;
+
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.message ?? "問い合わせの削除に失敗しました。");
+    }
+
+    return data;
+  };
+
   const render = (response) => {
     if (!root) return;
 
@@ -172,6 +195,17 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                           <p class="admin-inquiry-card__message-label">本文</p>
                           <p class="admin-inquiry-card__message-text">${escapeHtml(getInquiryMessage(item) || "本文は登録されていません。")}</p>
                         </div>
+
+                        <div class="admin-inquiry-card__actions">
+                          <button
+                            type="button"
+                            class="admin-danger-button"
+                            data-delete-inquiry-id="${escapeHtml(item.id ?? "")}"
+                            data-delete-inquiry-name="${escapeHtml(getInquiryName(item))}"
+                          >
+                            削除する
+                          </button>
+                        </div>
                       </article>
                     `,
                   )
@@ -197,6 +231,50 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       renderError(error instanceof Error ? error.message : "問い合わせ一覧の取得に失敗しました。");
     }
   };
+
+  root?.addEventListener("click", async (event) => {
+    const target = event.target;
+
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const button = target.closest("[data-delete-inquiry-id]");
+
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    const id = button.dataset.deleteInquiryId;
+    const name = button.dataset.deleteInquiryName ?? "対象の問い合わせ";
+
+    if (!id) {
+      window.alert("問い合わせIDを取得できませんでした。");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `問い合わせ「${name}」を削除します。\nこの操作は取り消せません。よろしいですか？`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const originalLabel = button.textContent ?? "削除する";
+    button.disabled = true;
+    button.textContent = "削除中...";
+
+    try {
+      await deleteInquiry(id);
+      window.alert("問い合わせを削除しました。");
+      await load();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "問い合わせの削除に失敗しました。");
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  });
 
   void load();
 </script>
@@ -275,6 +353,35 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     color: #374151;
     font-size: 14px;
     border-bottom: 1px solid #eef2f7;
+  }
+
+  :global(.admin-inquiry-card__actions) {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 20px 18px;
+  }
+
+  :global(.admin-danger-button) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 8px 14px;
+    border: 1px solid #fecaca;
+    border-radius: 999px;
+    background: #fff1f2;
+    color: #b91c1c;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  :global(.admin-danger-button:hover) {
+    background: #ffe4e6;
+  }
+
+  :global(.admin-danger-button:disabled) {
+    cursor: wait;
+    opacity: 0.7;
   }
 
   :global(.admin-inquiry-card__meta div) {
