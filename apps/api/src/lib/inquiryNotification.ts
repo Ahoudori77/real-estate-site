@@ -43,20 +43,23 @@ function formatInquiryType(value: string): string {
 
 function buildNotificationText(payload: InquiryNotificationPayload): string {
   const adminUrl = process.env.ADMIN_INQUIRIES_URL;
+  const receivedAt = new Date().toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
+  });
 
   return [
     "不動産サイトから新しい問い合わせが届きました。",
+    "管理画面で確認してください。",
     "",
     `問い合わせID: ${payload.inquiryId ?? "-"}`,
     `問い合わせ種別: ${formatInquiryType(payload.inquiryType)}`,
+    `受付日時: ${receivedAt}`,
     `対象物件slug: ${payload.propertySlug ?? "-"}`,
     "",
     `お名前: ${payload.name}`,
-    `メール: ${payload.email}`,
-    `電話番号: ${payload.phone ?? "-"}`,
     "",
-    "本文:",
-    payload.message,
+    "※問い合わせ本文・連絡先はこのメールには記載していません。",
+    "※詳細は管理画面で確認してください。",
     "",
     adminUrl ? `管理画面: ${adminUrl}` : "",
   ]
