@@ -1,4 +1,5 @@
 import type { InvocationContext } from "@azure/functions";
+import { EmailClient } from "@azure/communication-email";
 
 type InquiryNotificationPayload = {
   inquiryId: string | null;
@@ -8,21 +9,6 @@ type InquiryNotificationPayload = {
   email: string;
   phone: string | null;
   message: string;
-};
-
-type SendGridMailRequest = {
-  personalizations: Array<{
-    to: Array<{ email: string }>;
-  }>;
-  from: {
-    email: string;
-    name?: string;
-  };
-  subject: string;
-  content: Array<{
-    type: "text/plain";
-    value: string;
-  }>;
 };
 
 function formatInquiryType(value: string): string {
@@ -67,71 +53,45 @@ function buildNotificationText(payload: InquiryNotificationPayload): string {
     .join("\n");
 }
 
-async function sendWithSendGrid(
+async function sendWithAcsEmail(
   payload: InquiryNotificationPayload,
   context: InvocationContext,
 ): Promise<void> {
-  const apiKey = process.env.SENDGRID_API_KEY;
+  const connectionString = process.env.ACS_EMAIL_CONNECTION_STRING;
   const toEmail = process.env.INQUIRY_NOTIFICATION_TO_EMAIL;
-  const fromEmail = process.env.INQUIRY_NOTIFICATION_FROM_EMAIL;
-  const fromName = process.env.INQUIRY_NOTIFICATION_FROM_NAME ?? "不動産サイト";
+  const fromEmail = process.env.ACS_EMAIL_FROM_ADDRESS;
 
-  if (!apiKey || !toEmail || !fromEmail) {
+  if (!connectionString || !toEmail || !fromEmail) {
     context.log("Inquiry notification skipped. Notification env vars are not set.", {
       inquiryId: payload.inquiryId,
-      hasSendGridApiKey: Boolean(apiKey),
+      hasAcsEmailConnectionString: Boolean(connectionString),
       hasToEmail: Boolean(toEmail),
       hasFromEmail: Boolean(fromEmail),
     });
     return;
   }
 
+  const client = new EmailClient(connectionString);
+
   const subject = `【不動産サイト】新しい問い合わせが届きました（${formatInquiryType(
     payload.inquiryType,
   )}）`;
 
-  const body: SendGridMailRequest = {
-    personalizations: [
-      {
-        to: [{ email: toEmail }],
-      },
-    ],
-    from: {
-      email: fromEmail,
-      name: fromName,
+  await client.beginSend({
+    senderAddress: fromEmail,
+    content: {
+      subject,
+      plainText: buildNotificationText(payload),
     },
-    subject,
-    content: [
-      {
-        type: "text/plain",
-        value: buildNotificationText(payload),
-      },
-    ],
-  };
-
-  const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+    recipients: {
+      to: [{ address: toEmail }],
     },
-    body: JSON.stringify(body),
   });
 
-  if (!response.ok) {
-    const responseText = await response.text().catch(() => "");
-    context.error("Inquiry notification failed.", {
-      status: response.status,
-      statusText: response.statusText,
-      responseText: responseText.slice(0, 500),
-      inquiryId: payload.inquiryId,
-    });
-    return;
-  }
-
-  context.log("Inquiry notification sent.", {
+  context.log("Inquiry notification send request accepted.", {
     inquiryId: payload.inquiryId,
     toEmail,
+    fromEmail,
   });
 }
 
@@ -140,7 +100,7 @@ export async function notifyAdminInquiry(
   context: InvocationContext,
 ): Promise<void> {
   try {
-    await sendWithSendGrid(payload, context);
+    await sendWithAcsEmail(payload, context);
   } catch (error) {
     context.error("Inquiry notification failed unexpectedly.", error);
   }
