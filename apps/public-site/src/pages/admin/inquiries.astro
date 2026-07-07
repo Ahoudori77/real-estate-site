@@ -11,6 +11,37 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 >
   <section class="admin-section">
     <div class="admin-section__panel">
+      <form id="admin-inquiry-search-form" class="admin-inquiry-search">
+        <div class="admin-inquiry-search__field">
+          <label for="admin-inquiry-search-input">問い合わせを検索</label>
+          <input
+            id="admin-inquiry-search-input"
+            name="q"
+            type="search"
+            placeholder="お名前、メール、電話番号、本文、物件番号など"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="admin-inquiry-search__actions">
+          <button type="submit" class="admin-inquiry-search__submit">
+            検索する
+          </button>
+          <button
+            type="button"
+            class="admin-inquiry-search__clear"
+            data-clear-inquiry-search
+          >
+            条件をクリア
+          </button>
+        </div>
+      </form>
+
+      <p class="admin-inquiry-search__help">
+        お名前、メールアドレス、電話番号、問い合わせ本文、物件タイトル、
+        物件番号、slugを横断検索します。
+      </p>
+
       <div id="admin-inquiries-root">
         <p class="admin-loading">問い合わせ一覧を読み込み中...</p>
       </div>
@@ -19,37 +50,132 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 </AdminLayout>
 
 <script>
-  import { fetchList, escapeHtml, formatDateTime } from "../../lib/admin/client";
+  import {
+    fetchDetail,
+    escapeHtml,
+    formatDateTime,
+  } from "../../lib/admin/client";
+  import type { AdminInquiryListItem } from "../../types/admin";
+
+  type InquiryListResponse = {
+    items?: AdminInquiryListItem[];
+    total?: number;
+    page?: number;
+    pageSize?: number;
+  };
+
+  type InquiryListState = {
+    q: string;
+    page: number;
+  };
+
+  const DEFAULT_PAGE_SIZE = 20;
 
   const root = document.getElementById("admin-inquiries-root");
+  const searchForm = document.getElementById("admin-inquiry-search-form");
+  const searchInput = document.getElementById("admin-inquiry-search-input");
+  const clearSearchButton = document.querySelector("[data-clear-inquiry-search]");
 
-  const normalizeListResponse = (response) => {
+  const normalizeListResponse = (
+    response: InquiryListResponse | AdminInquiryListItem[],
+  ) => {
     if (Array.isArray(response)) {
       return {
         items: response,
         total: response.length,
+        page: 1,
+        pageSize: DEFAULT_PAGE_SIZE,
       };
     }
 
     const items = Array.isArray(response?.items) ? response.items : [];
+    const total = Math.max(0, Number(response?.total ?? items.length) || 0);
+    const page = Math.max(1, Number(response?.page ?? 1) || 1);
+    const pageSize = Math.max(
+      1,
+      Number(response?.pageSize ?? DEFAULT_PAGE_SIZE) || DEFAULT_PAGE_SIZE,
+    );
 
     return {
       items,
-      total: Number(response?.total ?? items.length),
+      total,
+      page,
+      pageSize,
     };
   };
 
-  const getInquiryName = (item) =>
-    item.name ?? item.customerName ?? item.contactName ?? "-";
+  const getStateFromLocation = (): InquiryListState => {
+    const params = new URLSearchParams(window.location.search);
+    const q = (params.get("q") ?? "").trim();
+    const rawPage = Number(params.get("page") ?? "1");
 
-  const getInquiryEmail = (item) =>
-    item.email ?? item.mail ?? "-";
+    return {
+      q,
+      page: Number.isFinite(rawPage) && rawPage >= 1
+        ? Math.floor(rawPage)
+        : 1,
+    };
+  };
 
-  const getInquiryPhone = (item) =>
-    item.phone ?? item.phoneNumber ?? "-";
+  const writeStateToLocation = (
+    state: InquiryListState,
+    replace = false,
+  ) => {
+    const url = new URL(window.location.href);
 
-  const getInquiryProperty = (item) => {
-    const title = item.propertyTitle ?? item.propertyName ?? null;
+    if (state.q) {
+      url.searchParams.set("q", state.q);
+    } else {
+      url.searchParams.delete("q");
+    }
+
+    if (state.page > 1) {
+      url.searchParams.set("page", String(state.page));
+    } else {
+      url.searchParams.delete("page");
+    }
+
+    url.searchParams.delete("pageSize");
+
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+
+    if (replace) {
+      window.history.replaceState({}, "", nextUrl);
+    } else {
+      window.history.pushState({}, "", nextUrl);
+    }
+  };
+
+  const syncFormWithState = (state: InquiryListState) => {
+    if (searchInput instanceof HTMLInputElement) {
+      searchInput.value = state.q;
+    }
+  };
+
+  const buildInquiryApiPath = (state: InquiryListState) => {
+    const params = new URLSearchParams();
+
+    if (state.q) {
+      params.set("q", state.q);
+    }
+
+    params.set("page", String(state.page));
+    params.set("pageSize", String(DEFAULT_PAGE_SIZE));
+
+    return `/api/admin/inquiries?${params.toString()}`;
+  };
+
+  const getInquiryName = (item: AdminInquiryListItem) =>
+    item.name ?? "-";
+
+  const getInquiryEmail = (item: AdminInquiryListItem) =>
+    item.email ?? "-";
+
+  const getInquiryPhone = (item: AdminInquiryListItem) =>
+    item.phone ?? "-";
+
+  const getInquiryProperty = (item: AdminInquiryListItem) => {
+    const title = item.propertyTitle ?? null;
     const propertyNumber = item.propertyNumber ?? null;
     const slug = item.propertySlug ?? null;
 
@@ -68,7 +194,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     return slug ?? "-";
   };
 
-  const getInquiryPropertyUrl = (item) => {
+  const getInquiryPropertyUrl = (item: AdminInquiryListItem) => {
     const slug = String(item.propertySlug ?? "").trim();
 
     if (!slug) {
@@ -78,7 +204,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     return `/properties/${encodeURIComponent(slug)}`;
   };
 
-  const renderInquiryProperty = (item) => {
+  const renderInquiryProperty = (item: AdminInquiryListItem) => {
     const propertyText = getInquiryProperty(item);
     const propertyUrl = getInquiryPropertyUrl(item);
 
@@ -93,26 +219,29 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     return `物件: <a href="${escapeHtml(propertyUrl)}" class="admin-inquiry-property-link" target="_blank" rel="noreferrer">${escapeHtml(propertyText)}</a>`;
   };
 
-  const getInquiryCreatedAt = (item) =>
-    item.createdAt ?? item.inquiredAt ?? item.submittedAt ?? null;
+  const getInquiryCreatedAt = (item: AdminInquiryListItem) =>
+    item.createdAt ?? null;
 
-  const getInquiryMessage = (item) =>
-    item.message ?? item.body ?? item.inquiryBody ?? "";
+  const getInquiryMessage = (item: AdminInquiryListItem) =>
+    item.message ?? "";
 
-  const renderError = (message) => {
+  const renderError = (message: string) => {
     if (!root) return;
     root.innerHTML = `<p class="admin-error">${escapeHtml(message)}</p>`;
   };
 
-  const deleteInquiry = async (id) => {
-    const response = await fetch(`/api/admin/inquiries/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      headers: {
-        Accept: "application/json",
+  const deleteInquiry = async (id: string) => {
+    const response = await fetch(
+      `/api/admin/inquiries/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+        },
       },
-    });
+    );
 
-    let data = null;
+    let data: { message?: string } | null = null;
 
     try {
       data = await response.json();
@@ -127,31 +256,96 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     return data;
   };
 
-  const render = (response) => {
+  const renderPagination = ({
+    total,
+    page,
+    pageSize,
+  }: {
+    total: number;
+    page: number;
+    pageSize: number;
+  }) => {
+    if (total === 0) {
+      return "";
+    }
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const start = (page - 1) * pageSize + 1;
+    const end = Math.min(page * pageSize, total);
+
+    return `
+      <div class="admin-inquiry-pagination">
+        <button
+          type="button"
+          class="admin-inquiry-pagination__button"
+          data-inquiry-page="${page - 1}"
+          ${page <= 1 ? "disabled" : ""}
+        >
+          前へ
+        </button>
+
+        <div class="admin-inquiry-pagination__status">
+          <strong>${escapeHtml(page)} / ${escapeHtml(totalPages)}ページ</strong>
+          <span>${escapeHtml(start)}〜${escapeHtml(end)}件を表示 / 全${escapeHtml(total)}件</span>
+        </div>
+
+        <button
+          type="button"
+          class="admin-inquiry-pagination__button"
+          data-inquiry-page="${page + 1}"
+          ${page >= totalPages ? "disabled" : ""}
+        >
+          次へ
+        </button>
+      </div>
+    `;
+  };
+
+  const render = (
+    response: InquiryListResponse | AdminInquiryListItem[],
+    state: InquiryListState,
+  ) => {
     if (!root) return;
 
-    const { items, total } = normalizeListResponse(response);
-    const withPropertyCount = items.filter((item) => getInquiryProperty(item) !== "-").length;
-    const withMessageCount = items.filter((item) => String(getInquiryMessage(item)).trim() !== "").length;
+    const {
+      items,
+      total,
+      page,
+      pageSize,
+    } = normalizeListResponse(response);
+
+    const withPropertyCount = items.filter(
+      (item) => getInquiryProperty(item) !== "-",
+    ).length;
+
+    const withMessageCount = items.filter(
+      (item) => String(getInquiryMessage(item)).trim() !== "",
+    ).length;
+
+    const searchCondition = state.q
+      ? `<p class="admin-inquiry-search-result">検索条件: 「${escapeHtml(state.q)}」</p>`
+      : "";
 
     root.innerHTML = `
+      ${searchCondition}
+
       <div class="admin-summary-grid">
         <div class="admin-summary-card">
-          <p class="admin-summary-card__label">総問い合わせ件数</p>
+          <p class="admin-summary-card__label">該当問い合わせ件数</p>
           <p class="admin-summary-card__value">${escapeHtml(total)}</p>
-          <p class="admin-summary-card__note">管理対象の問い合わせ総数です。</p>
+          <p class="admin-summary-card__note">現在の検索条件に一致する総件数です。</p>
         </div>
 
         <div class="admin-summary-card">
-          <p class="admin-summary-card__label">物件紐づきあり</p>
+          <p class="admin-summary-card__label">このページの物件紐づき</p>
           <p class="admin-summary-card__value">${escapeHtml(withPropertyCount)}</p>
-          <p class="admin-summary-card__note">対象物件が判別できる問い合わせ件数です。</p>
+          <p class="admin-summary-card__note">現在表示中の問い合わせ内の件数です。</p>
         </div>
 
         <div class="admin-summary-card">
-          <p class="admin-summary-card__label">本文あり</p>
+          <p class="admin-summary-card__label">このページの本文あり</p>
           <p class="admin-summary-card__value">${escapeHtml(withMessageCount)}</p>
-          <p class="admin-summary-card__note">本文を含む問い合わせ件数です。</p>
+          <p class="admin-summary-card__note">現在表示中の問い合わせ内の件数です。</p>
         </div>
       </div>
 
@@ -159,7 +353,9 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         <div class="admin-list-header">
           <div>
             <h2 class="admin-list-header__title">問い合わせ一覧</h2>
-            <p class="admin-list-header__meta">新しい順に確認できるよう整理してください。</p>
+            <p class="admin-list-header__meta">
+              新しい問い合わせから順に表示しています。
+            </p>
           </div>
         </div>
 
@@ -187,8 +383,14 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                         </div>
 
                         <div class="admin-inquiry-card__meta">
-                          <div><strong>メール:</strong> ${escapeHtml(getInquiryEmail(item))}</div>
-                          <div><strong>電話:</strong> ${escapeHtml(getInquiryPhone(item))}</div>
+                          <div>
+                            <strong>メール</strong>
+                            ${escapeHtml(getInquiryEmail(item))}
+                          </div>
+                          <div>
+                            <strong>電話</strong>
+                            ${escapeHtml(getInquiryPhone(item))}
+                          </div>
                         </div>
 
                         <div class="admin-inquiry-card__message">
@@ -211,11 +413,29 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                   )
                   .join("")}
               </div>
+
+              ${renderPagination({
+                total,
+                page,
+                pageSize,
+              })}
             `
             : `
               <div class="admin-empty-state">
-                <p class="admin-empty-state__title">問い合わせはまだありません</p>
-                <p class="admin-empty-state__text">公開サイトから送信されると、ここに一覧表示されます。</p>
+                <p class="admin-empty-state__title">
+                  ${
+                    state.q
+                      ? "検索条件に一致する問い合わせはありません"
+                      : "問い合わせはまだありません"
+                  }
+                </p>
+                <p class="admin-empty-state__text">
+                  ${
+                    state.q
+                      ? "検索語を変更するか、検索条件をクリアしてください。"
+                      : "公開サイトから送信されると、ここに一覧表示されます。"
+                  }
+                </p>
               </div>
             `
         }
@@ -224,18 +444,116 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   };
 
   const load = async () => {
+    if (!root) return;
+
+    const state = getStateFromLocation();
+    syncFormWithState(state);
+
+    root.innerHTML = `<p class="admin-loading">問い合わせ一覧を読み込み中...</p>`;
+
     try {
-      const response = await fetchList("/api/admin/inquiries");
-      render(response);
+      const response = await fetchDetail<
+        InquiryListResponse | AdminInquiryListItem[]
+      >(buildInquiryApiPath(state));
+
+      const normalized = normalizeListResponse(response);
+      const totalPages = Math.max(
+        1,
+        Math.ceil(normalized.total / normalized.pageSize),
+      );
+
+      if (normalized.total === 0 && state.page !== 1) {
+        writeStateToLocation(
+          {
+            ...state,
+            page: 1,
+          },
+          true,
+        );
+
+        await load();
+        return;
+      }
+
+      if (normalized.total > 0 && state.page > totalPages) {
+        writeStateToLocation(
+          {
+            ...state,
+            page: totalPages,
+          },
+          true,
+        );
+
+        await load();
+        return;
+      }
+
+      render(response, state);
     } catch (error) {
-      renderError(error instanceof Error ? error.message : "問い合わせ一覧の取得に失敗しました。");
+      renderError(
+        error instanceof Error
+          ? error.message
+          : "問い合わせ一覧の取得に失敗しました。",
+      );
     }
   };
+
+  searchForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const q = searchInput instanceof HTMLInputElement
+      ? searchInput.value.trim()
+      : "";
+
+    writeStateToLocation({
+      q,
+      page: 1,
+    });
+
+    void load();
+  });
+
+  clearSearchButton?.addEventListener("click", () => {
+    writeStateToLocation({
+      q: "",
+      page: 1,
+    });
+
+    void load();
+  });
 
   root?.addEventListener("click", async (event) => {
     const target = event.target;
 
     if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const pageButton = target.closest("[data-inquiry-page]");
+
+    if (pageButton instanceof HTMLButtonElement) {
+      const nextPage = Number(pageButton.dataset.inquiryPage);
+
+      if (
+        !pageButton.disabled &&
+        Number.isFinite(nextPage) &&
+        nextPage >= 1
+      ) {
+        const state = getStateFromLocation();
+
+        writeStateToLocation({
+          ...state,
+          page: Math.floor(nextPage),
+        });
+
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+
+        void load();
+      }
+
       return;
     }
 
@@ -270,15 +588,169 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       window.alert("問い合わせを削除しました。");
       await load();
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "問い合わせの削除に失敗しました。");
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "問い合わせの削除に失敗しました。",
+      );
+
       button.disabled = false;
       button.textContent = originalLabel;
     }
   });
 
+  window.addEventListener("popstate", () => {
+    void load();
+  });
+
   void load();
 </script>
 <style>
+  :global(.admin-inquiry-search) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 16px;
+  }
+
+  :global(.admin-inquiry-search__field) {
+    display: grid;
+    gap: 8px;
+  }
+
+  :global(.admin-inquiry-search__field label) {
+    color: #374151;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  :global(.admin-inquiry-search__field input) {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+  }
+
+  :global(.admin-inquiry-search__field input:focus) {
+    border-color: #2563eb;
+    outline: 3px solid rgba(37, 99, 235, 0.14);
+  }
+
+  :global(.admin-inquiry-search__actions) {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  :global(.admin-inquiry-search__submit),
+  :global(.admin-inquiry-search__clear) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  :global(.admin-inquiry-search__submit) {
+    border: 1px solid #1d4ed8;
+    background: #2563eb;
+    color: #ffffff;
+  }
+
+  :global(.admin-inquiry-search__submit:hover) {
+    background: #1d4ed8;
+  }
+
+  :global(.admin-inquiry-search__clear) {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #374151;
+  }
+
+  :global(.admin-inquiry-search__clear:hover) {
+    background: #f8fafc;
+  }
+
+  :global(.admin-inquiry-search__help) {
+    margin: 10px 0 20px;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  :global(.admin-inquiry-search-result) {
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #1e3a8a;
+    font-size: 14px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  :global(.admin-inquiry-pagination) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  :global(.admin-inquiry-pagination__button) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 88px;
+    min-height: 44px;
+    padding: 8px 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  :global(.admin-inquiry-pagination__button:hover:not(:disabled)) {
+    background: #f8fafc;
+    border-color: #94a3b8;
+  }
+
+  :global(.admin-inquiry-pagination__button:disabled) {
+    background: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
+  }
+
+  :global(.admin-inquiry-pagination__status) {
+    display: grid;
+    gap: 3px;
+    min-width: 180px;
+    text-align: center;
+  }
+
+  :global(.admin-inquiry-pagination__status strong) {
+    color: #111827;
+    font-size: 14px;
+  }
+
+  :global(.admin-inquiry-pagination__status span) {
+    color: #64748b;
+    font-size: 12px;
+  }
+
   :global(.admin-inquiry-list) {
     display: grid;
     gap: 20px;
@@ -430,6 +902,25 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   }
 
   @media (max-width: 720px) {
+    :global(.admin-inquiry-search) {
+      grid-template-columns: 1fr;
+      align-items: stretch;
+    }
+
+    :global(.admin-inquiry-search__actions) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    :global(.admin-inquiry-pagination) {
+      gap: 12px;
+    }
+
+    :global(.admin-inquiry-pagination__status) {
+      order: -1;
+      width: 100%;
+    }
+
     :global(.admin-inquiry-card__header) {
       display: grid;
     }
