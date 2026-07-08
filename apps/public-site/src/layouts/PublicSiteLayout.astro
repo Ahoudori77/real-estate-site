@@ -22,11 +22,281 @@ const {
     <title>{title}</title>
     <meta name="description" content={description} />
   </head>
+
   <body>
     <SiteHeader />
+
     <main>
       <slot />
     </main>
+
     <SiteFooter />
+
+    <div
+      id="site-loading-overlay"
+      class="site-loading-overlay"
+      role="status"
+      aria-live="polite"
+      aria-hidden="true"
+      hidden
+    >
+      <div class="site-loading-overlay__panel">
+        <span class="site-loading-overlay__spinner" aria-hidden="true"></span>
+
+        <div>
+          <p class="site-loading-overlay__title">読み込み中</p>
+          <p class="site-loading-overlay__text">
+            ページを準備しています。しばらくお待ちください。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const overlay = document.getElementById("site-loading-overlay");
+
+      const showLoadingOverlay = () => {
+        if (!(overlay instanceof HTMLElement)) {
+          return;
+        }
+
+        overlay.hidden = false;
+        overlay.setAttribute("aria-hidden", "false");
+        document.body.classList.add("site-is-loading");
+
+        window.requestAnimationFrame(() => {
+          overlay.classList.add("is-visible");
+        });
+      };
+
+      const hideLoadingOverlay = () => {
+        if (!(overlay instanceof HTMLElement)) {
+          return;
+        }
+
+        overlay.classList.remove("is-visible");
+        overlay.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("site-is-loading");
+        overlay.hidden = true;
+      };
+
+      const shouldShowForLink = (
+        link: HTMLAnchorElement,
+        event: MouseEvent,
+      ) => {
+        if (event.defaultPrevented || event.button !== 0) {
+          return false;
+        }
+
+        if (
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey
+        ) {
+          return false;
+        }
+
+        if (
+          link.hasAttribute("download") ||
+          link.dataset.noLoadingOverlay !== undefined
+        ) {
+          return false;
+        }
+
+        const target = link.getAttribute("target");
+
+        if (target && target.toLowerCase() !== "_self") {
+          return false;
+        }
+
+        const rawHref = link.getAttribute("href");
+
+        if (
+          !rawHref ||
+          rawHref.startsWith("#") ||
+          rawHref.startsWith("mailto:") ||
+          rawHref.startsWith("tel:") ||
+          rawHref.startsWith("javascript:")
+        ) {
+          return false;
+        }
+
+        const destination = new URL(link.href, window.location.href);
+        const current = new URL(window.location.href);
+
+        if (destination.origin !== current.origin) {
+          return false;
+        }
+
+        const sameDocument =
+          destination.pathname === current.pathname &&
+          destination.search === current.search;
+
+        if (sameDocument) {
+          return false;
+        }
+
+        return true;
+      };
+
+      document.addEventListener("click", (event) => {
+        const target = event.target;
+
+        if (!(target instanceof Element)) {
+          return;
+        }
+
+        const link = target.closest("a[href]");
+
+        if (!(link instanceof HTMLAnchorElement)) {
+          return;
+        }
+
+        if (!shouldShowForLink(link, event)) {
+          return;
+        }
+
+        queueMicrotask(() => {
+          if (!event.defaultPrevented) {
+            showLoadingOverlay();
+          }
+        });
+      });
+
+      document.addEventListener("submit", (event) => {
+        const form = event.target;
+
+        if (!(form instanceof HTMLFormElement)) {
+          return;
+        }
+
+        if (form.dataset.noLoadingOverlay !== undefined) {
+          return;
+        }
+
+        const method = (form.getAttribute("method") ?? "get").toLowerCase();
+
+        if (method === "dialog") {
+          return;
+        }
+
+        const target = form.getAttribute("target");
+
+        if (target && target.toLowerCase() !== "_self") {
+          return;
+        }
+
+        const destination = new URL(
+          form.getAttribute("action") || window.location.href,
+          window.location.href,
+        );
+
+        if (destination.origin !== window.location.origin) {
+          return;
+        }
+
+        queueMicrotask(() => {
+          if (!event.defaultPrevented) {
+            showLoadingOverlay();
+          }
+        });
+      });
+
+      window.addEventListener("pageshow", () => {
+        hideLoadingOverlay();
+      });
+    </script>
   </body>
 </html>
+
+<style>
+  :global(body.site-is-loading) {
+    overflow: hidden;
+    cursor: wait;
+  }
+
+  .site-loading-overlay {
+    position: fixed;
+    z-index: 9999;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(5px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms ease;
+  }
+
+  .site-loading-overlay.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .site-loading-overlay__panel {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    width: min(100%, 420px);
+    padding: 24px 26px;
+    border: 1px solid rgba(138, 31, 15, 0.16);
+    border-radius: 20px;
+    background: #ffffff;
+    box-shadow: 0 24px 64px rgba(46, 10, 5, 0.16);
+  }
+
+  .site-loading-overlay__spinner {
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    border: 4px solid rgba(138, 31, 15, 0.16);
+    border-top-color: var(--color-primary);
+    border-radius: 999px;
+    animation: site-loading-spin 720ms linear infinite;
+  }
+
+  .site-loading-overlay__title {
+    margin: 0;
+    color: var(--color-text);
+    font-size: 18px;
+    line-height: 1.4;
+    font-weight: 900;
+  }
+
+  .site-loading-overlay__text {
+    margin: 5px 0 0;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  @keyframes site-loading-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (max-width: 520px) {
+    .site-loading-overlay__panel {
+      align-items: flex-start;
+      padding: 20px;
+    }
+
+    .site-loading-overlay__spinner {
+      width: 36px;
+      height: 36px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-loading-overlay {
+      transition: none;
+    }
+
+    .site-loading-overlay__spinner {
+      animation-duration: 1400ms;
+    }
+  }
+</style>
