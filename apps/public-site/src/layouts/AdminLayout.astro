@@ -1,5 +1,9 @@
 ---
-type AdminSection = "properties" | "features" | "inquiries";
+type AdminSection =
+  | "properties"
+  | "features"
+  | "inquiries"
+  | "imageCleanup";
 
 interface Props {
   title: string;
@@ -32,6 +36,11 @@ const navItems: Array<{
     key: "inquiries",
     label: "問い合わせ管理",
     href: "/admin/inquiries",
+  },
+  {
+    key: "imageCleanup",
+    label: "未使用画像の整理",
+    href: "/admin/image-cleanup",
   },
 ];
 ---
@@ -87,6 +96,7 @@ const navItems: Array<{
               <a href="/admin/properties" class="admin-header__quick-link">物件管理</a>
               <a href="/admin/features" class="admin-header__quick-link">こだわり条件管理</a>
               <a href="/admin/inquiries" class="admin-header__quick-link">問い合わせ管理</a>
+              <a href="/admin/image-cleanup" class="admin-header__quick-link">未使用画像の整理</a>
             </div>
           </div>
         </header>

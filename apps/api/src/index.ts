@@ -12,3 +12,4 @@ import "./functions/admin/Inquiries";
 import "./functions/admin/InquiryDelete";
 import "./functions/admin/PropertyImages";
 import "./functions/admin/PropertyImageUploads";
+import "./functions/admin/PropertyImageCleanup";

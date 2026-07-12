@@ -91,3 +91,38 @@ export type ManagementPropertyDetail = {
   updatedAt?: string;
   featureIds: string[];
 };
+export type AdminImageCleanupCandidate = {
+  blobName: string;
+  imageUrl: string;
+  contentType: string | null;
+  size: number;
+  lastModified: string;
+  ageDays: number;
+};
+
+export type AdminImageCleanupScanResponse = {
+  dryRun: true;
+  containerName: string;
+  minAgeDays: number;
+  scannedBlobCount: number;
+  referencedBlobCount: number;
+  recentUnreferencedCount: number;
+  candidateCount: number;
+  candidateTotalSize: number;
+  candidates: AdminImageCleanupCandidate[];
+};
+
+export type AdminImageCleanupDeleteResult = {
+  blobName: string;
+  status: "deleted" | "skipped" | "failed";
+  reason?: string;
+};
+
+export type AdminImageCleanupDeleteResponse = {
+  minAgeDays: number;
+  requestedCount: number;
+  deletedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  results: AdminImageCleanupDeleteResult[];
+};

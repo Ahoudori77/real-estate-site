@@ -1,0 +1,1001 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout
+  title="未使用画像の整理"
+  description="Blob Storageに残っている、物件から参照されていない画像を確認・削除します。"
+  currentSection="imageCleanup"
+>
+  <section class="cleanup-notice">
+    <h2 class="cleanup-notice__title">削除前に必ず確認してください</h2>
+    <p class="cleanup-notice__text">
+      物件画像としてDBから参照されておらず、指定した保護期間を経過した画像だけを削除候補として表示します。
+    </p>
+    <p class="cleanup-notice__text">
+      候補の確認だけでは画像は削除されません。削除対象を選択し、確認操作を行った場合のみBlob Storageから削除されます。
+    </p>
+  </section>
+
+  <section class="cleanup-panel">
+    <div class="cleanup-panel__header">
+      <div>
+        <p class="cleanup-panel__eyebrow">UNUSED IMAGE SCAN</p>
+        <h2 class="cleanup-panel__title">未使用画像を確認</h2>
+      </div>
+    </div>
+
+    <div class="cleanup-controls">
+      <div class="cleanup-field">
+        <label for="cleanup-min-age-days">保護期間</label>
+        <div class="cleanup-field__input-row">
+          <input
+            id="cleanup-min-age-days"
+            type="number"
+            min="1"
+            max="365"
+            value="30"
+            inputmode="numeric"
+          />
+          <span>日</span>
+        </div>
+        <p class="cleanup-field__help">
+          アップロード後、この日数を経過していない未使用画像は削除候補から除外します。
+        </p>
+      </div>
+
+      <div class="cleanup-controls__actions">
+        <button
+          type="button"
+          class="cleanup-button cleanup-button--primary"
+          data-cleanup-scan-button
+        >
+          未使用画像を確認
+        </button>
+      </div>
+    </div>
+
+    <p
+      class="cleanup-message"
+      data-cleanup-message
+      aria-live="polite"
+    ></p>
+  </section>
+
+  <section
+    class="cleanup-results"
+    data-cleanup-results
+    hidden
+  >
+    <div class="cleanup-summary-grid" aria-label="画像確認結果">
+      <article class="cleanup-summary-card">
+        <p class="cleanup-summary-card__label">Blob総数</p>
+        <p class="cleanup-summary-card__value" data-cleanup-stat="scanned">0件</p>
+      </article>
+
+      <article class="cleanup-summary-card">
+        <p class="cleanup-summary-card__label">DB参照中</p>
+        <p class="cleanup-summary-card__value" data-cleanup-stat="referenced">0件</p>
+      </article>
+
+      <article class="cleanup-summary-card">
+        <p class="cleanup-summary-card__label">保護期間内</p>
+        <p class="cleanup-summary-card__value" data-cleanup-stat="recent">0件</p>
+      </article>
+
+      <article class="cleanup-summary-card cleanup-summary-card--warning">
+        <p class="cleanup-summary-card__label">削除候補</p>
+        <p class="cleanup-summary-card__value" data-cleanup-stat="candidates">0件</p>
+      </article>
+
+      <article class="cleanup-summary-card">
+        <p class="cleanup-summary-card__label">候補合計容量</p>
+        <p class="cleanup-summary-card__value" data-cleanup-stat="size">0 B</p>
+      </article>
+    </div>
+
+    <div class="cleanup-list-panel">
+      <div class="cleanup-list-panel__header">
+        <div>
+          <p class="cleanup-panel__eyebrow">DELETE CANDIDATES</p>
+          <h2 class="cleanup-panel__title">削除候補一覧</h2>
+        </div>
+
+        <label class="cleanup-select-all">
+          <input
+            type="checkbox"
+            data-cleanup-select-all
+          />
+          すべて選択
+        </label>
+      </div>
+
+      <div
+        class="cleanup-candidate-list"
+        data-cleanup-candidate-list
+      >
+        <p class="cleanup-empty">確認結果はまだありません。</p>
+      </div>
+
+      <div class="cleanup-delete-footer">
+        <p class="cleanup-selected-count" data-cleanup-selected-count>
+          0件選択中
+        </p>
+
+        <button
+          type="button"
+          class="cleanup-button cleanup-button--danger"
+          data-cleanup-delete-button
+          disabled
+        >
+          選択した画像を削除
+        </button>
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<script>
+  import {
+    escapeHtml,
+    fetchDetail,
+    formatDateTime,
+  } from "../../lib/admin/client";
+
+  import type {
+    AdminImageCleanupCandidate,
+    AdminImageCleanupDeleteResponse,
+    AdminImageCleanupScanResponse,
+  } from "../../types/admin";
+
+  const minAgeInput = document.getElementById(
+    "cleanup-min-age-days",
+  );
+
+  const scanButton = document.querySelector(
+    "[data-cleanup-scan-button]",
+  );
+
+  const deleteButton = document.querySelector(
+    "[data-cleanup-delete-button]",
+  );
+
+  const resultsRoot = document.querySelector(
+    "[data-cleanup-results]",
+  );
+
+  const candidateList = document.querySelector(
+    "[data-cleanup-candidate-list]",
+  );
+
+  const messageRoot = document.querySelector(
+    "[data-cleanup-message]",
+  );
+
+  const selectAllInput = document.querySelector(
+    "[data-cleanup-select-all]",
+  );
+
+  const selectedCountRoot = document.querySelector(
+    "[data-cleanup-selected-count]",
+  );
+
+  let currentMinAgeDays = 30;
+
+  const setMessage = (
+    message: string,
+    type: "info" | "success" | "error" = "info",
+  ) => {
+    if (!(messageRoot instanceof HTMLElement)) return;
+
+    messageRoot.textContent = message;
+    messageRoot.dataset.type = type;
+  };
+
+  const formatBytes = (value: number): string => {
+    const bytes = Math.max(0, Number(value) || 0);
+
+    if (bytes < 1024) {
+      return `${bytes.toLocaleString("ja-JP")} B`;
+    }
+
+    const units = ["KB", "MB", "GB", "TB"];
+    let size = bytes / 1024;
+    let unitIndex = 0;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex += 1;
+    }
+
+    return `${size.toLocaleString("ja-JP", {
+      maximumFractionDigits: 2,
+    })} ${units[unitIndex]}`;
+  };
+
+  const getMinAgeDays = (): number | null => {
+    if (!(minAgeInput instanceof HTMLInputElement)) {
+      return null;
+    }
+
+    const value = Number(minAgeInput.value);
+
+    if (
+      !Number.isInteger(value) ||
+      value < 1 ||
+      value > 365
+    ) {
+      return null;
+    }
+
+    return value;
+  };
+
+  const setStat = (
+    name: string,
+    value: string,
+  ) => {
+    const element = document.querySelector(
+      `[data-cleanup-stat="${name}"]`,
+    );
+
+    if (element instanceof HTMLElement) {
+      element.textContent = value;
+    }
+  };
+
+  const getCandidateCheckboxes =
+    (): HTMLInputElement[] => {
+      if (!(candidateList instanceof HTMLElement)) {
+        return [];
+      }
+
+      return Array.from(
+        candidateList.querySelectorAll(
+          "[data-cleanup-candidate-checkbox]",
+        ),
+      ).filter(
+        (element): element is HTMLInputElement =>
+          element instanceof HTMLInputElement,
+      );
+    };
+
+  const updateSelectionState = () => {
+    const checkboxes = getCandidateCheckboxes();
+    const selected = checkboxes.filter(
+      (checkbox) => checkbox.checked,
+    );
+
+    if (selectedCountRoot instanceof HTMLElement) {
+      selectedCountRoot.textContent =
+        `${selected.length}件選択中`;
+    }
+
+    if (deleteButton instanceof HTMLButtonElement) {
+      deleteButton.disabled = selected.length === 0;
+    }
+
+    if (selectAllInput instanceof HTMLInputElement) {
+      selectAllInput.checked =
+        checkboxes.length > 0 &&
+        selected.length === checkboxes.length;
+
+      selectAllInput.indeterminate =
+        selected.length > 0 &&
+        selected.length < checkboxes.length;
+
+      selectAllInput.disabled =
+        checkboxes.length === 0;
+    }
+  };
+
+  const renderCandidates = (
+    candidates: AdminImageCleanupCandidate[],
+  ) => {
+    if (!(candidateList instanceof HTMLElement)) return;
+
+    if (candidates.length === 0) {
+      candidateList.innerHTML = `
+        <div class="cleanup-empty">
+          <p class="cleanup-empty__title">削除候補はありません</p>
+          <p class="cleanup-empty__text">
+            現在、保護期間を経過した未使用画像は見つかりませんでした。
+          </p>
+        </div>
+      `;
+
+      updateSelectionState();
+      return;
+    }
+
+    candidateList.innerHTML = candidates
+      .map(
+        (candidate) => `
+          <article class="cleanup-candidate">
+            <label class="cleanup-candidate__checkbox">
+              <input
+                type="checkbox"
+                value="${escapeHtml(candidate.blobName)}"
+                data-cleanup-candidate-checkbox
+              />
+              <span>削除対象に選択</span>
+            </label>
+
+            <div class="cleanup-candidate__image-wrap">
+              <img
+                src="${escapeHtml(candidate.imageUrl)}"
+                alt=""
+                class="cleanup-candidate__image"
+                loading="lazy"
+              />
+            </div>
+
+            <div class="cleanup-candidate__details">
+              <dl class="cleanup-detail-list">
+                <div>
+                  <dt>Blob名</dt>
+                  <dd class="cleanup-detail-list__path">
+                    ${escapeHtml(candidate.blobName)}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt>最終更新日時</dt>
+                  <dd>
+                    ${escapeHtml(
+                      formatDateTime(candidate.lastModified),
+                    )}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt>経過日数</dt>
+                  <dd>${escapeHtml(candidate.ageDays)}日</dd>
+                </div>
+
+                <div>
+                  <dt>ファイルサイズ</dt>
+                  <dd>${escapeHtml(formatBytes(candidate.size))}</dd>
+                </div>
+
+                <div>
+                  <dt>コンテンツタイプ</dt>
+                  <dd>
+                    ${escapeHtml(candidate.contentType ?? "-")}
+                  </dd>
+                </div>
+              </dl>
+
+              <a
+                href="${escapeHtml(candidate.imageUrl)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="cleanup-candidate__link"
+              >
+                画像を別タブで確認
+              </a>
+            </div>
+          </article>
+        `,
+      )
+      .join("");
+
+    candidateList
+      .querySelectorAll(
+        "[data-cleanup-candidate-checkbox]",
+      )
+      .forEach((checkbox) => {
+        checkbox.addEventListener(
+          "change",
+          updateSelectionState,
+        );
+      });
+
+    updateSelectionState();
+  };
+
+  const renderScanResult = (
+    response: AdminImageCleanupScanResponse,
+  ) => {
+    if (resultsRoot instanceof HTMLElement) {
+      resultsRoot.hidden = false;
+    }
+
+    setStat(
+      "scanned",
+      `${response.scannedBlobCount.toLocaleString("ja-JP")}件`,
+    );
+
+    setStat(
+      "referenced",
+      `${response.referencedBlobCount.toLocaleString("ja-JP")}件`,
+    );
+
+    setStat(
+      "recent",
+      `${response.recentUnreferencedCount.toLocaleString("ja-JP")}件`,
+    );
+
+    setStat(
+      "candidates",
+      `${response.candidateCount.toLocaleString("ja-JP")}件`,
+    );
+
+    setStat(
+      "size",
+      formatBytes(response.candidateTotalSize),
+    );
+
+    renderCandidates(
+      Array.isArray(response.candidates)
+        ? response.candidates
+        : [],
+    );
+  };
+
+  const requestJson = async <T>(
+    path: string,
+    init: RequestInit,
+  ): Promise<T> => {
+    const response = await fetch(path, {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(init.headers ?? {}),
+      },
+    });
+
+    if (!response.ok) {
+      const payload = await response
+        .json()
+        .catch(() => null);
+
+      const message =
+        payload &&
+        typeof payload === "object" &&
+        "message" in payload &&
+        typeof payload.message === "string"
+          ? payload.message
+          : `API処理に失敗しました。(${response.status})`;
+
+      throw new Error(message);
+    }
+
+    return (await response.json()) as T;
+  };
+
+  const scanUnusedImages = async () => {
+    const minAgeDays = getMinAgeDays();
+
+    if (minAgeDays === null) {
+      setMessage(
+        "保護期間は1～365日の整数で入力してください。",
+        "error",
+      );
+      return;
+    }
+
+    if (!(scanButton instanceof HTMLButtonElement)) return;
+
+    currentMinAgeDays = minAgeDays;
+    scanButton.disabled = true;
+    scanButton.textContent = "確認中...";
+
+    if (deleteButton instanceof HTMLButtonElement) {
+      deleteButton.disabled = true;
+    }
+
+    setMessage(
+      "Blob StorageとDBの画像情報を照合しています。",
+      "info",
+    );
+
+    try {
+      const response =
+        await fetchDetail<AdminImageCleanupScanResponse>(
+          `/api/admin/property-images/cleanup?minAgeDays=${encodeURIComponent(
+            String(minAgeDays),
+          )}`,
+        );
+
+      renderScanResult(response);
+
+      setMessage(
+        response.candidateCount > 0
+          ? `${response.candidateCount}件の削除候補が見つかりました。内容を確認して削除対象を選択してください。`
+          : "削除候補は見つかりませんでした。",
+        "success",
+      );
+    } catch (error) {
+      console.error(
+        "[admin image cleanup] scan failed",
+        error,
+      );
+
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "未使用画像の確認に失敗しました。",
+        "error",
+      );
+    } finally {
+      scanButton.disabled = false;
+      scanButton.textContent = "未使用画像を確認";
+      updateSelectionState();
+    }
+  };
+
+  scanButton?.addEventListener(
+    "click",
+    () => void scanUnusedImages(),
+  );
+
+  selectAllInput?.addEventListener(
+    "change",
+    () => {
+      if (!(selectAllInput instanceof HTMLInputElement)) {
+        return;
+      }
+
+      getCandidateCheckboxes().forEach(
+        (checkbox) => {
+          checkbox.checked = selectAllInput.checked;
+        },
+      );
+
+      updateSelectionState();
+    },
+  );
+
+  deleteButton?.addEventListener(
+    "click",
+    async () => {
+      if (!(deleteButton instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      const selectedBlobNames =
+        getCandidateCheckboxes()
+          .filter((checkbox) => checkbox.checked)
+          .map((checkbox) => checkbox.value);
+
+      if (selectedBlobNames.length === 0) {
+        setMessage(
+          "削除する画像を選択してください。",
+          "error",
+        );
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `${selectedBlobNames.length}件の画像をBlob Storageから削除します。\n\nこの操作は取り消せません。削除してよろしいですか？`,
+      );
+
+      if (!confirmed) return;
+
+      deleteButton.disabled = true;
+      deleteButton.textContent = "削除中...";
+
+      if (scanButton instanceof HTMLButtonElement) {
+        scanButton.disabled = true;
+      }
+
+      setMessage(
+        "選択した画像を削除しています。",
+        "info",
+      );
+
+      try {
+        const response =
+          await requestJson<AdminImageCleanupDeleteResponse>(
+            "/api/admin/property-images/cleanup",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                confirm: true,
+                minAgeDays: currentMinAgeDays,
+                blobNames: selectedBlobNames,
+              }),
+            },
+          );
+
+        const summary = [
+          `削除 ${response.deletedCount}件`,
+          `対象外 ${response.skippedCount}件`,
+          `失敗 ${response.failedCount}件`,
+        ].join("、");
+
+        setMessage(
+          `画像整理が完了しました。${summary}。`,
+          response.failedCount > 0
+            ? "error"
+            : "success",
+        );
+
+        await scanUnusedImages();
+      } catch (error) {
+        console.error(
+          "[admin image cleanup] delete failed",
+          error,
+        );
+
+        setMessage(
+          error instanceof Error
+            ? error.message
+            : "未使用画像の削除に失敗しました。",
+          "error",
+        );
+      } finally {
+        deleteButton.textContent =
+          "選択した画像を削除";
+
+        if (scanButton instanceof HTMLButtonElement) {
+          scanButton.disabled = false;
+        }
+
+        updateSelectionState();
+      }
+    },
+  );
+
+  updateSelectionState();
+</script>
+
+<style>
+  .cleanup-notice,
+  .cleanup-panel,
+  .cleanup-list-panel {
+    border: 1px solid var(--admin-border-soft);
+    border-radius: 20px;
+    background: #ffffff;
+    padding: 24px;
+    box-shadow: var(--admin-shadow);
+  }
+
+  .cleanup-notice {
+    border-color: #fde68a;
+    background: #fffbeb;
+  }
+
+  .cleanup-notice__title {
+    margin: 0;
+    color: #92400e;
+    font-size: 18px;
+  }
+
+  .cleanup-notice__text {
+    margin: 10px 0 0;
+    color: #78350f;
+    line-height: 1.8;
+  }
+
+  .cleanup-panel,
+  .cleanup-results {
+    margin-top: 20px;
+  }
+
+  .cleanup-panel__header,
+  .cleanup-list-panel__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .cleanup-panel__eyebrow {
+    margin: 0 0 6px;
+    color: var(--admin-accent);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+  }
+
+  .cleanup-panel__title {
+    margin: 0;
+    font-size: 22px;
+  }
+
+  .cleanup-controls {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 22px;
+  }
+
+  .cleanup-field {
+    width: min(100%, 480px);
+  }
+
+  .cleanup-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 800;
+  }
+
+  .cleanup-field__input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .cleanup-field__input-row input {
+    width: 140px;
+    min-height: 44px;
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+    background: var(--admin-input-bg);
+    padding: 8px 12px;
+    font: inherit;
+  }
+
+  .cleanup-field__help {
+    margin: 8px 0 0;
+    color: var(--admin-muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .cleanup-controls__actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .cleanup-button {
+    min-height: 44px;
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+    padding: 0 18px;
+    background: #ffffff;
+    color: var(--admin-text);
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .cleanup-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+
+  .cleanup-button--primary {
+    border-color: var(--admin-accent);
+    background: var(--admin-accent);
+    color: #ffffff;
+  }
+
+  .cleanup-button--danger {
+    border-color: var(--admin-danger);
+    background: var(--admin-danger);
+    color: #ffffff;
+  }
+
+  .cleanup-message {
+    min-height: 24px;
+    margin: 18px 0 0;
+    font-weight: 700;
+  }
+
+  .cleanup-message[data-type="info"] {
+    color: var(--admin-muted);
+  }
+
+  .cleanup-message[data-type="success"] {
+    color: var(--admin-success);
+  }
+
+  .cleanup-message[data-type="error"] {
+    color: var(--admin-danger);
+  }
+
+  .cleanup-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .cleanup-summary-card {
+    border: 1px solid var(--admin-border-soft);
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 18px;
+    box-shadow: var(--admin-shadow);
+  }
+
+  .cleanup-summary-card--warning {
+    border-color: #fdba74;
+    background: #fff7ed;
+  }
+
+  .cleanup-summary-card__label {
+    margin: 0;
+    color: var(--admin-muted);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .cleanup-summary-card__value {
+    margin: 8px 0 0;
+    font-size: 24px;
+    font-weight: 900;
+  }
+
+  .cleanup-list-panel {
+    margin-top: 18px;
+  }
+
+  .cleanup-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .cleanup-select-all input,
+  .cleanup-candidate__checkbox input {
+    width: 18px;
+    height: 18px;
+  }
+
+  .cleanup-candidate-list {
+    display: grid;
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .cleanup-candidate {
+    display: grid;
+    grid-template-columns: auto 180px minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+    border: 1px solid var(--admin-border-soft);
+    border-radius: 16px;
+    background: var(--admin-surface);
+    padding: 16px;
+  }
+
+  .cleanup-candidate__checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .cleanup-candidate__image-wrap {
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+    border: 1px solid var(--admin-border-soft);
+    border-radius: 12px;
+    background: var(--admin-surface-muted);
+  }
+
+  .cleanup-candidate__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .cleanup-detail-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+  }
+
+  .cleanup-detail-list div {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .cleanup-detail-list dt {
+    color: var(--admin-muted);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .cleanup-detail-list dd {
+    min-width: 0;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  .cleanup-detail-list__path {
+    overflow-wrap: anywhere;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  .cleanup-candidate__link {
+    display: inline-flex;
+    margin-top: 14px;
+    color: var(--admin-accent);
+    font-weight: 800;
+  }
+
+  .cleanup-delete-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 22px;
+    border-top: 1px solid var(--admin-border-soft);
+    padding-top: 18px;
+  }
+
+  .cleanup-selected-count {
+    margin: 0;
+    color: var(--admin-muted);
+    font-weight: 800;
+  }
+
+  .cleanup-empty {
+    border: 1px dashed var(--admin-border);
+    border-radius: 14px;
+    padding: 28px;
+    text-align: center;
+    color: var(--admin-muted);
+  }
+
+  .cleanup-empty__title {
+    margin: 0;
+    color: var(--admin-text);
+    font-weight: 900;
+  }
+
+  .cleanup-empty__text {
+    margin: 8px 0 0;
+  }
+
+  @media (max-width: 960px) {
+    .cleanup-summary-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .cleanup-candidate {
+      grid-template-columns: auto 140px minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 720px) {
+    .cleanup-controls,
+    .cleanup-panel__header,
+    .cleanup-list-panel__header,
+    .cleanup-delete-footer {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .cleanup-controls__actions,
+    .cleanup-button {
+      width: 100%;
+    }
+
+    .cleanup-summary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .cleanup-candidate {
+      grid-template-columns: 1fr;
+    }
+
+    .cleanup-candidate__checkbox {
+      order: 1;
+    }
+
+    .cleanup-candidate__image-wrap {
+      order: 2;
+    }
+
+    .cleanup-candidate__details {
+      order: 3;
+    }
+
+    .cleanup-detail-list div {
+      grid-template-columns: 1fr;
+      gap: 3px;
+    }
+  }
+</style>
