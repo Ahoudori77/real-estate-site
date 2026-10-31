@@ -50,8 +50,8 @@ const areaMap = Object.fromEntries(
 
     <div class="form-group">
       <label for="city">市区町村</label>
-      <select id="city" name="city">
-        <option value="">選択してください</option>
+      <select id="city" name="city" disabled={!selectedPrefecture}>
+        <option value="">{selectedPrefecture ? "選択してください" : "先に都道府県を選択してください"}</option>
         {citiesForSelectedPrefecture.map((city) => (
           <option value={city} selected={selectedCity === city}>
             {city}
@@ -60,16 +60,7 @@ const areaMap = Object.fromEntries(
       </select>
     </div>
 
-    <div class="form-group">
-      <label for="floorPlan">間取り</label>
-      <input
-        id="floorPlan"
-        name="floorPlan"
-        type="text"
-        value={values.floorPlan ?? ""}
-        placeholder="例: 3LDK"
-      />
-    </div>
+
   </div>
 
   <div class="actions">
@@ -93,10 +84,13 @@ const areaMap = Object.fromEntries(
 
       const cities = areaMap[prefectureValue] ?? [];
       citySelect.innerHTML = "";
+      citySelect.disabled = !prefectureValue;
 
       const defaultOption = document.createElement("option");
       defaultOption.value = "";
-      defaultOption.textContent = "選択してください";
+      defaultOption.textContent = prefectureValue
+        ? "選択してください"
+        : "先に都道府県を選択してください";
       citySelect.appendChild(defaultOption);
 
       cities.forEach((city) => {
@@ -137,7 +131,7 @@ const areaMap = Object.fromEntries(
 
     updateCityOptions(selectedPrefecture, selectedCity);
 
-    setValue("#floorPlan", params.get("floorPlan") ?? "");
+
 
     form.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -145,7 +139,7 @@ const areaMap = Object.fromEntries(
       const formData = new FormData(form);
       const nextParams = new URLSearchParams();
 
-      ["type", "prefecture", "city", "floorPlan"].forEach((key) => {
+      ["type", "prefecture", "city"].forEach((key) => {
         const value = String(formData.get(key) ?? "").trim();
 
         if (value !== "") {

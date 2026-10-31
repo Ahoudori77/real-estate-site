@@ -89,6 +89,10 @@ const hasMapCoordinates =
 
 const mapQuery = hasMapCoordinates ? `${mapLat},${mapLng}` : "";
 
+const mapExternalUrl = hasMapCoordinates
+  ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`
+  : "";
+
 const mapEmbedUrl =
   hasMapCoordinates && googleMapsApiKey
     ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(
@@ -217,15 +221,27 @@ const mapEmbedUrl =
                         class="map-frame"
                         src={mapEmbedUrl}
                         loading="lazy"
-                        referrerpolicy="no-referrer-when-downgrade"
+                        referrerpolicy="strict-origin-when-cross-origin"
                         allowfullscreen
                         title={`${property.title}の周辺地図`}
                       ></iframe>
                     </div>
                   ) : (
                     <div class="map-placeholder">
-                      地図表示の準備中です。
+                      埋め込み地図を表示できません。
                     </div>
+                  )}
+
+                  {mapExternalUrl && (
+                    <p class="map-external-action">
+                      <a
+                        href={mapExternalUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Google マップで開く（別タブ）
+                      </a>
+                    </p>
                   )}
                 </section>
               )}
@@ -530,6 +546,45 @@ const mapEmbedUrl =
     height: 100%;
     border: 0;
     display: block;
+  }
+
+  .map-external-action {
+    display: flex;
+    justify-content: flex-end;
+    margin: 16px 0 0;
+  }
+
+  .map-external-action a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 18px;
+    border: 1px solid var(--color-accent);
+    border-radius: 12px;
+    background: #ffffff;
+    color: var(--color-accent-dark);
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.5;
+    text-align: center;
+    text-decoration: none;
+    transition: background 0.2s ease;
+  }
+
+  .map-external-action a:hover {
+    background: #fff4f1;
+  }
+
+  .map-external-action a:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 640px) {
+    .map-external-action a {
+      width: 100%;
+    }
   }
 
   .not-found-card {
