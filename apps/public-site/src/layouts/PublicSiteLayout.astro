@@ -6,11 +6,13 @@ import "../styles/global.css";
 interface Props {
   title: string;
   description?: string;
+  initialLoading?: boolean;
 }
 
 const {
   title,
   description = "土地・戸建ての物件情報を掲載する不動産サイトです。",
+  initialLoading = false,
 } = Astro.props;
 ---
 
@@ -23,22 +25,17 @@ const {
     <meta name="description" content={description} />
   </head>
 
-  <body>
-    <SiteHeader />
-
-    <main>
-      <slot />
-    </main>
-
-    <SiteFooter />
-
+  <body
+    class:list={{ "site-is-loading": initialLoading }}
+    data-initial-loading={initialLoading ? "true" : undefined}
+  >
     <div
       id="site-loading-overlay"
-      class="site-loading-overlay"
+      class:list={["site-loading-overlay", { "is-visible": initialLoading }]}
       role="status"
       aria-live="polite"
-      aria-hidden="true"
-      hidden
+      aria-hidden={initialLoading ? "false" : "true"}
+      hidden={!initialLoading}
     >
       <div class="site-loading-overlay__panel">
         <span class="site-loading-overlay__spinner" aria-hidden="true"></span>
@@ -51,6 +48,16 @@ const {
         </div>
       </div>
     </div>
+
+
+    <SiteHeader />
+
+    <main>
+      <slot />
+    </main>
+
+    <SiteFooter />
+
 
     <script>
       const overlay = document.getElementById("site-loading-overlay");
@@ -203,6 +210,23 @@ const {
         });
       });
 
+
+      if (document.body.dataset.initialLoading === "true") {
+        const completeInitialLoading = () => {
+          window.requestAnimationFrame(hideLoadingOverlay);
+        };
+
+        if (document.readyState === "loading") {
+          document.addEventListener(
+            "DOMContentLoaded",
+            completeInitialLoading,
+            { once: true },
+          );
+        } else {
+          completeInitialLoading();
+        }
+      }
+
       window.addEventListener("pageshow", () => {
         hideLoadingOverlay();
       });
@@ -228,6 +252,10 @@ const {
     opacity: 0;
     pointer-events: none;
     transition: opacity 160ms ease;
+  }
+
+  .site-loading-overlay[hidden] {
+    display: none;
   }
 
   .site-loading-overlay.is-visible {
