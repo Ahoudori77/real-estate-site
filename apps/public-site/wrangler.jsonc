@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "real-estate-site",
+  "preview_urls": false,
   "compatibility_date": "2026-05-05",
   "compatibility_flags": [
     "nodejs_compat",
